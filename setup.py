@@ -3,10 +3,10 @@
 from distutils.core import setup
 
 setup(
-        name = "xbird",
+        name = "collectd",
         version = "0.10",
         description="python stats service",
         maintainer="yancl",
         maintainer_email="kmoving@gmail.com",
-        packages=['xbird', 'xbird.protocol', 'xbird.protocol.genpy', 'xbird.protocol.genpy.xbird']
+        packages=['collectd', 'collectd.protocol', 'collectd.protocol.genpy', 'collectd.protocol.genpy.collectd']
 )
