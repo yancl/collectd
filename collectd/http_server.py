@@ -3,17 +3,21 @@ from cassandra_client.protocol.genpy.cassandra import Cassandra
 from cassandra_client.protocol.genpy.cassandra.ttypes import *
 from cassandra_client import cassandra_api
 from thrift_client import thrift_client
+from Queue import Queue
 
 from datetime import datetime
 import json
 import web
 urls = (
     #/time_line?category='call_latency'&key='add_user'&type=1&start='0'&finish=''&reversed=0&count=1000
-    '/time_line', 'time_line'
+    '/time_line', 'time_line',
+    #/event?category='call_counter&key='stats:add_user:host1'&start='0'&finish=''&reversed=0&count=1000
+    '/event', 'event'
 )
 app = web.application(urls, globals())
 
-KEYSPACE = 'stats'
+TIMELINE_KEYSPACE = 'timeline_stats'
+EVENT_KEYSPACE = 'event_stats'
 SERVERS = ['127.0.0.1:9160']
 
 def create_cassandra_client(keyspace, servers):
@@ -21,15 +25,41 @@ def create_cassandra_client(keyspace, servers):
                     servers=servers)
     return cassandra_api.CassandraAPI(handle=client, keyspace=keyspace)
 
-def get_time_slice_pk(category, key):
-    #FIXME, slow performance
+def get_store_pk(category, key):
     now = datetime.now()
     daystr = '%d-%d-%d' % (now.year, now.month, now.day)
     return daystr + ':' + category + ':' + key
 
 
+class ReqProxy(object):
+    def __init__(self, conn_num=10):
+        self._eq = Queue(maxsize=conn_num)
+        for i in xrange(conn_num):
+            self._eq.put(create_cassandra_client(keyspace=EVENT_KEYSPACE, servers=SERVERS))
+        self._tq = Queue(maxsize=conn_num)
+        for i in xrange(conn_num):
+            self._tq.put(create_cassandra_client(keyspace=TIMELINE_KEYSPACE, servers=SERVERS))
 
-class time_line:        
+    def timeline_select_slice(self, pk, cf, start, finish, reversed, count):
+        try:
+            conn = self._tq.get(block=True)
+            return self._select_slice(conn, pk, cf, start, finish, reversed, count)
+        finally:
+            self._tq.put(conn)
+
+    def event_select_slice(self, pk, cf, start, finish, reversed, count):
+        try:
+            conn = self._eq.get(block=True)
+            return self._select_slice(conn, pk, cf, start, finish, reversed, count)
+        finally:
+            self._eq.put(conn)
+
+    def _select_slice(self, conn, pk, cf, start, finish, reversed, count):
+        return conn.select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=reversed, count=count)
+
+req_proxy = ReqProxy()
+
+class time_line:
     def GET(self):
         wi = web.input()
         category = wi.category
@@ -40,15 +70,31 @@ class time_line:
         reversed = wi.reversed
         count = int(wi.count)
 
-        cassandra_handle = create_cassandra_client(keyspace=KEYSPACE, servers=SERVERS)
-        pk = get_time_slice_pk(category, key)
-        slice = cassandra_handle.select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=reversed, count=count)
+        pk = get_store_pk(category, key)
+        slice = req_proxy.timeline_select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=int(reversed), count=count)
         l = []
         for item in slice:
             l.append((item.column.name, item.column.value))
         j = {'slice':l}
         return json.dumps(j)
 
+class event:
+    def GET(self):
+        wi = web.input()
+        category = wi.category
+        key = wi.key
+        start = wi.start
+        finish = wi.finish
+        reversed = wi.reversed
+        count = int(wi.count)
+
+        pk = get_store_pk(category, key)
+        slice = req_proxy.event_select_slice(pk=pk, cf='counters', start=start, finish=finish, reversed=int(reversed), count=count)
+        l = []
+        for item in slice:
+            l.append((item.counter_column.name, item.counter_column.value))
+        j = {'slice':l}
+        return json.dumps(j)
 
 if __name__ == "__main__":
     app.run()
