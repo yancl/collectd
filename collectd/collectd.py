@@ -17,13 +17,11 @@ from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from thrift.server.TNonblockingServer import TNonblockingServer
 
-from utils import now
-
 
 StoreColumn = namedtuple('StoreColumn', 'cf name value timestamp')
 
 def get_daystr():
-    current = now()
+    current = datetime.now()
     return '%d-%d-%d' % (current.year, current.month, current.day)
 
 class CassandraWrapper(object):
