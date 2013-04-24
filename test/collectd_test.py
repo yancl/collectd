@@ -3,7 +3,7 @@ sys.path.insert(0, '../')
 
 from collectd import Event,Stats,TimeSlice,Point,ETimeSlicePointType,now
 
-class TestXBird(object):
+class TestCollectd(object):
     def setUp(self):
         self._stats = Stats(server='127.0.0.1', port=1464)
 
@@ -13,7 +13,7 @@ class TestXBird(object):
     def test_add_event(self):
         self._stats.add_event(Event(timestamp=now(),
                         category='call_counter',
-                        key=['stats', 'add_user', 'host0'],
+                        key=['stats', 'add_user', 'host2'],
                         value=11))
 
     def test_add_slice(self):
