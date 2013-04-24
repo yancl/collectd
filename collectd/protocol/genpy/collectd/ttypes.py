@@ -23,6 +23,7 @@ class ETimeSlicePointType:
   PT_Q0 = 3
   PT_Q1 = 4
   PT_Q2 = 5
+  PT_P9 = 6
 
   _VALUES_TO_NAMES = {
     0: "PT_MIN",
@@ -31,6 +32,7 @@ class ETimeSlicePointType:
     3: "PT_Q0",
     4: "PT_Q1",
     5: "PT_Q2",
+    6: "PT_P9",
   }
 
   _NAMES_TO_VALUES = {
@@ -40,6 +42,7 @@ class ETimeSlicePointType:
     "PT_Q0": 3,
     "PT_Q1": 4,
     "PT_Q2": 5,
+    "PT_P9": 6,
   }
 
 

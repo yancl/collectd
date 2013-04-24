@@ -27,19 +27,22 @@ class Aggregator(object):
 
     def append_timeline(self, key, val):
         try:
-            self._event[key].append(val)
+            self._timeline[key].append(val)
         except KeyError:
-            self._event[key] = [val]
+            self._timeline[key] = [val]
 
     def _rotate_worker(self):
         while True:
-            time.sleep(self._aggregator_time)
-            event = self._event
-            timeline = self._timeline
-            self._event = {}
-            self._timeline = {}
-            self._report_event(event)
-            self._report_timeline(timeline)
+            try:
+                time.sleep(self._aggregator_time)
+                event = self._event
+                timeline = self._timeline
+                self._event = {}
+                self._timeline = {}
+                self._report_event(event)
+                self._report_timeline(timeline)
+            except Exception,e:
+                print 'ex:',e
 
     def _report_event(self, event_m):
         events = []
@@ -70,12 +73,14 @@ class Aggregator(object):
         q0 = vs0[((len(vs0) * 1) /4)]
         q1 = vs0[((len(vs0) * 2) /4)]
         q2 = vs0[((len(vs0) * 3) /4)]
-        points = [Point(k=ETimeSlicePointType.PT_MIN, v='%.2f' % vs0[0]),
-                  Point(k=ETimeSlicePointType.PT_MAX, v='%.2f' % vs0[-1]),
-                  Point(k=ETimeSlicePointType.PT_MAX, v='%.2f' % avg),
-                  Point(k=ETimeSlicePointType.PT_Q0, v='%.2f' % q0),
-                  Point(k=ETimeSlicePointType.PT_Q1, v='%.2f' % q1),
-                  Point(k=ETimeSlicePointType.PT_Q2, v='%.2f' % q2)]
+        p9 = vs0[((len(vs0) * 9) /10)]
+        points = [Point(k=ETimeSlicePointType.PT_MIN, v='%.4f' % vs0[0]),
+                  Point(k=ETimeSlicePointType.PT_MAX, v='%.4f' % vs0[-1]),
+                  Point(k=ETimeSlicePointType.PT_MAX, v='%.4f' % avg),
+                  Point(k=ETimeSlicePointType.PT_Q0, v='%.4f' % q0),
+                  Point(k=ETimeSlicePointType.PT_Q1, v='%.4f' % q1),
+                  Point(k=ETimeSlicePointType.PT_Q2, v='%.4f' % q2),
+                  Point(k=ETimeSlicePointType.PT_P9, v='%.4f' % p9)]
         return points
 
     def run(self):

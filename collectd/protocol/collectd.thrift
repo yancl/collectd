@@ -14,6 +14,7 @@ enum ETimeSlicePointType
     PT_Q0  = 3, #First Quartile
     PT_Q1  = 4, #Second Quartile
     PT_Q2  = 5, #Third Qurartile
+    PT_P9  = 6, #90 percent response time
 }
 
 struct Point
