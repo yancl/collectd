@@ -10,5 +10,11 @@ class Stats(object):
     def add_event(self, event):
         self._client.add_event([event])
 
+    def add_events(self, events):
+        self._client.add_event(events)
+
     def add_time_slice(self, slice):
         self._client.add_time_slice([slice])
+
+    def add_time_slices(self, slices):
+        self._client.add_time_slice(slices)
