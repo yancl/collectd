@@ -2,4 +2,4 @@ from protocol.genpy.collectd.ttypes import Point, Event, TimeSlice, ETimeSlicePo
 from utils import now
 from client import Stats
 
-__all__ = ['Stats', 'Event', 'TimeSlice', 'Point', 'ETimeSlicePointType', 'now']
+__all__ = ['Aggregator', 'Stats', 'Event', 'TimeSlice', 'Point', 'ETimeSlicePointType', 'now']
