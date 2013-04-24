@@ -3,9 +3,11 @@ import socket
 from threading import Thread
 from client import Stats
 from protocol.genpy.collectd.ttypes import Point, Event, TimeSlice, ETimeSlicePointType
+from utils import now
 
 class Aggregator(object):
-    __slots__ = '_aggregator_time', '_event', '_timeline', '_rotate_worker', '_hostname', '_event_category', '_timeline_category'
+    __slots__ = ['_aggregator_time', '_event', '_timeline', '_rotate_thread', \
+                '_reporter', '_hostname', '_event_category', '_timeline_category']
     def __init__(self, event_category='frequency', timeline_category='latency',
                 server='127.0.0.1', port=1464, aggregator_time=30):
         self._event_category = event_category
@@ -14,7 +16,7 @@ class Aggregator(object):
         self._aggregator_time = aggregator_time
         self._event = {}
         self._timeline = {}
-        self._rotate_worker = Thread(target=self._rotate_worker)
+        self._rotate_thread = Thread(target=self._rotate_worker)
         self._hostname = self._get_host_name()
 
     def incr_event_counter(self, key, val=1):
@@ -77,5 +79,5 @@ class Aggregator(object):
         return points
 
     def run(self):
-        self._rotate_worker.setDaemon(True)
-        self._rotate_worker.start()
+        self._rotate_thread.setDaemon(True)
+        self._rotate_thread.start()
