@@ -4,10 +4,14 @@ from threading import Thread
 from client import Stats
 from protocol.genpy.collectd.ttypes import Point, Event, TimeSlice, ETimeSlicePointType
 from utils import now
+from collections import namedtuple
+from Queue import Queue
+
+ConsumeItem = namedtuple('ConsumeItem', 'content, ctype')
 
 class Aggregator(object):
-    __slots__ = ['_aggregator_time', '_event', '_timeline', '_rotate_thread', \
-                '_reporter', '_hostname', '_event_category', '_timeline_category']
+    __slots__ = ['_aggregator_time', '_event', '_timeline', '_rotate_thread', '_report_thread', \
+                '_reporter', '_hostname', '_event_category', '_timeline_category', '_q']
     def __init__(self, event_category='frequency', timeline_category='latency',
                 server='127.0.0.1', port=1464, aggregator_time=30):
         self._event_category = event_category
@@ -17,7 +21,9 @@ class Aggregator(object):
         self._event = {}
         self._timeline = {}
         self._rotate_thread = Thread(target=self._rotate_worker)
+        self._report_thread = Thread(target=self._report_worker)
         self._hostname = self._get_host_name()
+        self._q = Queue(maxsize=100000)
 
     def incr_event_counter(self, key, val=1):
         try:
@@ -39,10 +45,21 @@ class Aggregator(object):
                 timeline = self._timeline
                 self._event = {}
                 self._timeline = {}
-                self._report_event(event)
-                self._report_timeline(timeline)
+                self._q.put_nowait(ConsumeItem(content=event, ctype=0))
+                self._q.put_nowait(ConsumeItem(content=timeline, ctype=1))
             except Exception,e:
-                print 'ex:',e
+                print 'rotate ex:',e
+
+    def _report_worker(self):
+        while True:
+            try:
+                item = self._q.get(block=True)
+                if item.ctype == 0:
+                    self._report_event(item.content)
+                elif item.ctype == 1:
+                    self._report_timeline(item.content)
+            except Exception, e:
+                print 'report ex:',e
 
     def _report_event(self, event_m):
         events = []
@@ -86,3 +103,5 @@ class Aggregator(object):
     def run(self):
         self._rotate_thread.setDaemon(True)
         self._rotate_thread.start()
+        self._report_thread.setDaemon(True)
+        self._report_thread.start()
