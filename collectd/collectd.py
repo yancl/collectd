@@ -77,7 +77,6 @@ class CassandraWrapper(object):
         return r
 
     def add_event(self, events):
-        print 'e:',events
         for event in events:
             keys = self._denormalize_keys(event.key)
             pks = [self._get_store_pk(event.category, key) for key in keys]
@@ -88,7 +87,6 @@ class CassandraWrapper(object):
         return self._daystr + ':' + category + ':' + key
 
     def add_time_slice(self, slices):
-        print 't:',slices
         update_pairs = []
         for time_slice in slices:
             columns = [StoreColumn(cf=str(point.k), name=str(time_slice.timestamp),
