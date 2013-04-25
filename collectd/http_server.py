@@ -127,7 +127,6 @@ class stats:
             slice = req_proxy.event_get_ranges(cf='counters', columns=[], start_key=start_key, end_key=end_key, count=count)
         elif category == 'latency':
             slice = req_proxy.timeline_get_ranges(cf='0', columns=[], start_key=start_key, end_key=end_key, count=count)
-        print 'slice:',slice
         l = []
         daystr = get_daystr()
         for item in slice:

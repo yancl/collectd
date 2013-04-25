@@ -22,13 +22,25 @@ import conf
 
 StoreColumn = namedtuple('StoreColumn', 'cf name value timestamp')
 
+EventCF = ('Y', 'M', 'D', 'H', 'm')
+
+class DateWrapper(object):
+    def __init__(self, t):
+        ts = time.localtime(t)
+        self.m = {}
+        self.m['Y'] = int(time.mktime((ts.tm_year,1,1,0,0,0,0,0,0)))
+        self.m['M'] = int(time.mktime((ts.tm_year,ts.tm_mon,1,0,0,0,0,0,0)))
+        self.m['D'] = int(time.mktime((ts.tm_year,ts.tm_mon,ts.tm_mday,0,0,0,0,0,0)))
+        self.m['H'] = int(time.mktime((ts.tm_year,ts.tm_mon,ts.tm_mday,ts.tm_hour,0,0,0,0,0)))
+        self.m['m'] = int(time.mktime((ts.tm_year,ts.tm_mon,ts.tm_mday,ts.tm_hour,ts.tm_min,0,0,0,0)))
+        self.daystr= '%d-%d-%d' % (ts.tm_year, ts.tm_mon, ts.tm_mday)
+
 def get_daystr():
     current = datetime.now()
     return '%d-%d-%d' % (current.year, current.month, current.day)
 
 class CassandraWrapper(object):
-    def __init__(self, timeline_keyspace, event_keyspace, servers=conf.SERVERS):
-        options = {'timeout':10}
+    def __init__(self, timeline_keyspace, event_keyspace, servers=conf.SERVERS, options={'timeout':10}):
         timeline_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
                         servers=servers, options=options)
         event_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
@@ -38,6 +50,7 @@ class CassandraWrapper(object):
         self._daystr = get_daystr()
 
     def _batch_update_timeline(self, update_pairs):
+        update_pairs = self._merge_update_pairs(update_pairs)
         cb = cassandra_api.CassandraAPI.CassandraBatch()
         for (pk, columns) in update_pairs:
             cbf = cassandra_api.CassandraAPI.CassandraBatchCF()
@@ -54,21 +67,34 @@ class CassandraWrapper(object):
             cb.add(pk=pk, cassandra_batch_cf=cbf)
         self._timeline_cassandra_api.batch_update(cassandra_batch=cb)
 
-    def _batch_update_event(self, pks, columns):
+    def _batch_update_event(self, update_pairs):
+        update_pairs = self._merge_update_pairs(update_pairs)
         cb = cassandra_api.CassandraAPI.CassandraBatch()
-        cbf = cassandra_api.CassandraAPI.CassandraBatchCF()
-        for column in columns:
-            mutations = []
-            mutations.append(Mutation(column_or_supercolumn=
-                ColumnOrSuperColumn(
-                    counter_column=CounterColumn(
-                            name=column.name,
-                            value=column.value))))
-            cbf.add(cf=column.cf, mutations=mutations)
+        for (pk, columns) in update_pairs:
+            cbf = cassandra_api.CassandraAPI.CassandraBatchCF()
+            for column in columns:
+                mutations = []
+                mutations.append(Mutation(column_or_supercolumn=
+                    ColumnOrSuperColumn(
+                        counter_column=CounterColumn(
+                                name=column.name,
+                                value=column.value))))
+                cbf.add(cf=column.cf, mutations=mutations)
 
-        for pk in pks:
             cb.add(pk=pk, cassandra_batch_cf=cbf)
         self._event_cassandra_api.batch_update(cassandra_batch=cb)
+
+    def _merge_update_pairs(self, pairs):
+        m = {}
+        for (k, v) in pairs:
+            try:
+                m[k] += v
+            except KeyError:
+                m[k] = v
+        r = []
+        for (k, v) in m.iteritems():
+            r.append((k, v))
+        return r
 
     def _denormalize_keys(self, key_list):
         r = []
@@ -79,14 +105,26 @@ class CassandraWrapper(object):
         return r
 
     def add_event(self, events):
+        update_pairs = []
         for event in events:
+            t = DateWrapper(event.timestamp)
             keys = self._denormalize_keys(event.key)
-            pks = [self._get_store_pk(event.category, key) for key in keys]
-            self._batch_update_event(pks=pks,
-                    columns=[StoreColumn(cf='counters', name=str(event.timestamp), value=event.value, timestamp=event.timestamp)])
+            for cf in EventCF:
+                if cf == 'm':
+                    continue
+                for key in keys:
+                    columns = [StoreColumn(cf=cf, name=str(t.m[cf]), value=event.value, timestamp=0)]  #counter do not need timestamp
+                    update_pairs.append((self._get_store_pk(event.category, key), columns))
+
+            #process column family 'm',it is special 
+            #because of huge amount if we do not store it according to DAY.
+            for key in keys:
+                columns = [StoreColumn(cf='m', name=str(t.m['m']), value=event.value, timestamp=0)]
+                update_pairs.append((t.daystr+':'+self._get_store_pk(event.category, key), columns))
+        self._batch_update_event(update_pairs)
 
     def _get_store_pk(self, category, key):
-        return self._daystr + ':' + category + ':' + key
+        return category + ':' + key
 
     def add_time_slice(self, slices):
         update_pairs = []

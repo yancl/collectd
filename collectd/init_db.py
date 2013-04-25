@@ -39,5 +39,5 @@ if __name__ == '__main__':
                             servers=conf.SERVERS)
 
     init_event_keyspace_and_column_familys(keyspace='event_stats',
-                            cfs=['counters'],
+                            cfs=['Y', 'M', 'D', 'H', 'm'],
                             servers=conf.SERVERS)
