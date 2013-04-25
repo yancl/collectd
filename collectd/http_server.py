@@ -10,9 +10,9 @@ from datetime import datetime
 import json
 import web
 urls = (
-    #/time_line?category='latency'&key='add_user'&type=1&start='0'&finish=''&reversed=0&count=1000
+    #/time_line?category='latency'&key='add_user'&type=1&start='0'&finish=''&reversed=0&count=1000&p='m'
     '/time_line', 'time_line',
-    #/event?category='frequency&key='stats:add_user:host1'&start='0'&finish=''&reversed=0&count=1000
+    #/event?category='frequency&key='stats:add_user:host1'&start='0'&finish=''&reversed=0&count=1000&p='m'
     '/event', 'event',
     #/stats?category='latency'&count=1000
     '/stats', 'stats',
@@ -89,8 +89,11 @@ class time_line:
         finish = wi.finish
         reversed = wi.reversed
         count = int(wi.count)
-
-        pk = get_store_pk(category, key)
+        p = wi.p
+        if p == 'm':
+            pk = get_store_pk(category, key)
+        else:
+            pk = category + ':' + key
         slice = req_proxy.timeline_select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=int(reversed), count=count)
         l = []
         for item in slice:
@@ -107,9 +110,12 @@ class event:
         finish = wi.finish
         reversed = wi.reversed
         count = int(wi.count)
-
-        pk = get_store_pk(category, key)
-        slice = req_proxy.event_select_slice(pk=pk, cf='counters', start=start, finish=finish, reversed=int(reversed), count=count)
+        p = wi.p
+        if p == 'm':
+            pk = get_store_pk(category, key)
+        else:
+            pk = category + ':' + key
+        slice = req_proxy.event_select_slice(pk=pk, cf=p, start=start, finish=finish, reversed=int(reversed), count=count)
         l = []
         for item in slice:
             l.append((item.counter_column.name, item.counter_column.value))
@@ -124,7 +130,7 @@ class stats:
         end_key = ''
         count = int(wi.count)
         if category == 'frequency':
-            slice = req_proxy.event_get_ranges(cf='counters', columns=[], start_key=start_key, end_key=end_key, count=count)
+            slice = req_proxy.event_get_ranges(cf='Y', columns=[], start_key=start_key, end_key=end_key, count=count)
         elif category == 'latency':
             slice = req_proxy.timeline_get_ranges(cf='0', columns=[], start_key=start_key, end_key=end_key, count=count)
         l = []
