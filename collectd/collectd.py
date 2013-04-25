@@ -120,8 +120,11 @@ class CollectorConsumer(object):
 
     def _event_worker(self):
         while True:
-            events = self._eq.get(block=True)
-            self._store.add_event(events)
+            try:
+                events = self._eq.get(block=True)
+                self._store.add_event(events)
+            except Exception,e:
+                print e
 
     def _daystr_worker(self):
         while True:
@@ -131,8 +134,11 @@ class CollectorConsumer(object):
 
     def _time_slice_worker(self):
         while True:
-            slice = self._tq.get(block=True)
-            self._store.add_time_slice(slice)
+            try:
+                slice = self._tq.get(block=True)
+                self._store.add_time_slice(slice)
+            except Exception,e:
+                print e
 
     def run(self):
         self._event_worker.setDaemon(True)
