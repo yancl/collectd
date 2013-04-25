@@ -24,7 +24,7 @@ StoreColumn = namedtuple('StoreColumn', 'cf name value timestamp')
 
 EventCF = ('Y', 'M', 'D', 'H', 'm')
 
-class DateWrapper(object):
+class EventDateWrapper(object):
     def __init__(self, t):
         ts = time.localtime(t)
         self.m = {}
@@ -35,9 +35,14 @@ class DateWrapper(object):
         self.m['m'] = int(time.mktime((ts.tm_year,ts.tm_mon,ts.tm_mday,ts.tm_hour,ts.tm_min,0,0,0,0)))
         self.daystr= '%d-%d-%d' % (ts.tm_year, ts.tm_mon, ts.tm_mday)
 
-def get_daystr():
-    current = datetime.now()
-    return '%d-%d-%d' % (current.year, current.month, current.day)
+class TimeLineDateWrapper(object):
+    def __init__(self, t):
+        ts = time.localtime(t)
+        if ts.tm_sec < 30:
+            self.s = int(time.mktime((ts.tm_year,ts.tm_mon,ts.tm_mday,ts.tm_hour,ts.tm_min,0,0,0,0)))
+        else:
+            self.s = int(time.mktime((ts.tm_year,ts.tm_mon,ts.tm_mday,ts.tm_hour,ts.tm_min,30,0,0,0)))
+        self.daystr = '%d-%d-%d' % (ts.tm_year, ts.tm_mon, ts.tm_mday)
 
 class CassandraWrapper(object):
     def __init__(self, timeline_keyspace, event_keyspace, servers=conf.SERVERS, options={'timeout':10}):
@@ -47,7 +52,6 @@ class CassandraWrapper(object):
                         servers=servers, options=options)
         self._timeline_cassandra_api = cassandra_api.CassandraAPI(handle=timeline_client, keyspace=timeline_keyspace)
         self._event_cassandra_api = cassandra_api.CassandraAPI(handle=event_client, keyspace=event_keyspace)
-        self._daystr = get_daystr()
 
     def _batch_update_timeline(self, update_pairs):
         update_pairs = self._merge_update_pairs(update_pairs)
@@ -107,7 +111,7 @@ class CassandraWrapper(object):
     def add_event(self, events):
         update_pairs = []
         for event in events:
-            t = DateWrapper(event.timestamp)
+            t = EventDateWrapper(event.timestamp)
             keys = self._denormalize_keys(event.key)
             for cf in EventCF:
                 if cf == 'm':
@@ -129,14 +133,13 @@ class CassandraWrapper(object):
     def add_time_slice(self, slices):
         update_pairs = []
         for time_slice in slices:
-            columns = [StoreColumn(cf=str(point.k), name=str(time_slice.timestamp),
+            t = TimeLineDateWrapper(time_slice.timestamp)
+            columns = [StoreColumn(cf=str(point.k), name=str(t.s),
                                     value=str(point.v), timestamp=time_slice.timestamp) for point in time_slice.points]
-            pk = self._get_store_pk(time_slice.category, time_slice.key)
+            pk = t.daystr + ':' + self._get_store_pk(time_slice.category, time_slice.key)
             update_pairs.append((pk, columns))
         self._batch_update_timeline(update_pairs)
 
-    def update_daystr(self, daystr):
-        self._daystr = daystr
 
 class CollectorConsumer(object):
     def __init__(self, q_max_size, store):
@@ -145,7 +148,6 @@ class CollectorConsumer(object):
         self._tq = Queue(maxsize=q_max_size)
         self._event_worker = self._create_worker(self._event_worker)
         self._time_worker = self._create_worker(self._time_slice_worker)
-        self._daystr_worker = self._create_worker(self._daystr_worker)
 
     def add_event(self, events):
         self._eq.put_nowait(events)
@@ -164,12 +166,6 @@ class CollectorConsumer(object):
             except Exception,e:
                 print e
 
-    def _daystr_worker(self):
-        while True:
-            time.sleep(30)
-            self._store.update_daystr(get_daystr())
-            
-
     def _time_slice_worker(self):
         while True:
             try:
@@ -181,10 +177,8 @@ class CollectorConsumer(object):
     def run(self):
         self._event_worker.setDaemon(True)
         self._time_worker.setDaemon(True)
-        self._daystr_worker.setDaemon(True)
         self._event_worker.start()
         self._time_worker.start()
-        self._daystr_worker.start()
 
 class CollectorHandler(object):
     def __init__(self, collector):
