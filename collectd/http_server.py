@@ -4,30 +4,36 @@ from cassandra_client.protocol.genpy.cassandra.ttypes import *
 from cassandra_client import cassandra_api
 from thrift_client import thrift_client
 from Queue import Queue
+import conf
 
 from datetime import datetime
 import json
 import web
 urls = (
-    #/time_line?category='call_latency'&key='add_user'&type=1&start='0'&finish=''&reversed=0&count=1000
+    #/time_line?category='latency'&key='add_user'&type=1&start='0'&finish=''&reversed=0&count=1000
     '/time_line', 'time_line',
-    #/event?category='call_counter&key='stats:add_user:host1'&start='0'&finish=''&reversed=0&count=1000
-    '/event', 'event'
+    #/event?category='frequency&key='stats:add_user:host1'&start='0'&finish=''&reversed=0&count=1000
+    '/event', 'event',
+    #/stats?category='latency'&count=1000
+    '/stats', 'stats',
 )
 app = web.application(urls, globals())
 
 TIMELINE_KEYSPACE = 'timeline_stats'
 EVENT_KEYSPACE = 'event_stats'
-SERVERS = ['127.0.0.1:9160']
+SERVERS = conf.SERVERS
 
 def create_cassandra_client(keyspace, servers):
     client = thrift_client.ThriftClient(client_class=Cassandra.Client,
                     servers=servers)
     return cassandra_api.CassandraAPI(handle=client, keyspace=keyspace)
 
-def get_store_pk(category, key):
+def get_daystr():
     now = datetime.now()
-    daystr = '%d-%d-%d' % (now.year, now.month, now.day)
+    return '%d-%d-%d' % (now.year, now.month, now.day)
+
+def get_store_pk(category, key):
+    daystr = get_daystr()
     return daystr + ':' + category + ':' + key
 
 
@@ -51,6 +57,20 @@ class ReqProxy(object):
         try:
             conn = self._eq.get(block=True)
             return self._select_slice(conn, pk, cf, start, finish, reversed, count)
+        finally:
+            self._eq.put(conn)
+
+    def timeline_get_ranges(self, cf, columns, start_key, end_key, count):
+        try:
+            conn = self._tq.get(block=True)
+            return conn.get_range(cf=cf, columns=columns, start_key=start_key, end_key=end_key, count=count)
+        finally:
+            self._tq.put(conn)
+
+    def event_get_ranges(self, cf, columns, start_key, end_key, count):
+        try:
+            conn = self._eq.get(block=True)
+            return conn.get_range(cf=cf, columns=columns, start_key=start_key, end_key=end_key, count=count)
         finally:
             self._eq.put(conn)
 
@@ -94,6 +114,25 @@ class event:
         for item in slice:
             l.append((item.counter_column.name, item.counter_column.value))
         j = {'slice':l}
+        return json.dumps(j)
+
+class stats:
+    def GET(self):
+        wi = web.input()
+        category = wi.category
+        start_key = ''
+        end_key = ''
+        count = int(wi.count)
+        if category == 'frequency':
+            slice = req_proxy.event_get_ranges(cf='counters', columns=[], start_key=start_key, end_key=end_key, count=count)
+        elif category == 'latency':
+            slice = req_proxy.timeline_get_ranges(cf='0', columns=[], start_key=start_key, end_key=end_key, count=count)
+        print 'slice:',slice
+        l = []
+        daystr = get_daystr()
+        for item in slice:
+            l.append(item.key.replace(daystr+':', ''))
+        j = {'slice': l}
         return json.dumps(j)
 
 if __name__ == "__main__":

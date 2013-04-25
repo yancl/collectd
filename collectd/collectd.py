@@ -17,6 +17,8 @@ from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from thrift.server.TNonblockingServer import TNonblockingServer
 
+import conf
+
 
 StoreColumn = namedtuple('StoreColumn', 'cf name value timestamp')
 
@@ -25,7 +27,7 @@ def get_daystr():
     return '%d-%d-%d' % (current.year, current.month, current.day)
 
 class CassandraWrapper(object):
-    def __init__(self, timeline_keyspace, event_keyspace, servers=['127.0.0.1:9160']):
+    def __init__(self, timeline_keyspace, event_keyspace, servers=conf.SERVERS):
         options = {'timeout':10}
         timeline_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
                         servers=servers, options=options)
