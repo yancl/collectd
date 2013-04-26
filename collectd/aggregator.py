@@ -1,5 +1,6 @@
 import time
 import socket
+from collections import defaultdict
 from threading import Thread
 from client import Stats
 from protocol.genpy.collectd.ttypes import Point, Event, TimeSlice, ETimeSlicePointType
@@ -18,24 +19,18 @@ class Aggregator(object):
         self._timeline_category = timeline_category
         self._reporter = Stats(server=server, port=port)
         self._aggregator_time = aggregator_time
-        self._event = {}
-        self._timeline = {}
+        self._event = defaultdict(int)
+        self._timeline = defaultdict(list)
         self._rotate_thread = Thread(target=self._rotate_worker)
         self._report_thread = Thread(target=self._report_worker)
         self._hostname = self._get_host_name()
         self._q = Queue(maxsize=100000)
 
     def incr_event_counter(self, key, val=1):
-        try:
-            self._event[key] += 1
-        except KeyError:
-            self._event[key] = 1
+        self._event[key] += 1
 
     def append_timeline(self, key, val):
-        try:
-            self._timeline[key].append(val)
-        except KeyError:
-            self._timeline[key] = [val]
+        self._timeline[key].append(val)
 
     def _rotate_worker(self):
         while True:
@@ -43,8 +38,8 @@ class Aggregator(object):
                 time.sleep(self._aggregator_time)
                 event = self._event
                 timeline = self._timeline
-                self._event = {}
-                self._timeline = {}
+                self._event = defaultdict(int)
+                self._timeline = defaultdict(list)
                 self._q.put_nowait(ConsumeItem(content=event, ctype=0))
                 self._q.put_nowait(ConsumeItem(content=timeline, ctype=1))
             except Exception,e:
