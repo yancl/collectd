@@ -109,7 +109,11 @@ class time_line:
         for item in slice:
             l.append((item.column.name, item.column.value))
         j = {'slice':l, 't':TYPE2STR[int(cf)]}
-        return json.dumps(j)
+        callback= wi.get('callback', None)
+        if callback:
+            return '%s(%s)' % (callback, json.dumps(j))
+        else:
+            return json.dumps(j)
 
 class event:
     def GET(self):
@@ -130,7 +134,11 @@ class event:
         for item in slice:
             l.append((item.counter_column.name, item.counter_column.value))
         j = {'slice':l}
-        return json.dumps(j)
+        callback= wi.get('callback', None)
+        if callback:
+            return '%s(%s)' % (callback, json.dumps(j))
+        else:
+            return json.dumps(j)
 
 class stats:
     def GET(self):
