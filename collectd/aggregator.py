@@ -38,8 +38,8 @@ class Aggregator(object):
                 time.sleep(self._aggregator_time)
                 event = self._event
                 timeline = self._timeline
-                self._event = {}
-                self._timeline = {}
+                self._event = defaultdict(int)
+                self._timeline = defaultdict(list)
                 self._q.put_nowait(ConsumeItem(content=event, ctype=0))
                 self._q.put_nowait(ConsumeItem(content=timeline, ctype=1))
             except Exception,e:
