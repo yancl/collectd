@@ -156,7 +156,11 @@ class stats:
         for item in slice:
             l.append(item.key.replace(daystr+':', ''))
         j = {'slice': l}
-        return json.dumps(j)
+        callback= wi.get('callback', None)
+        if callback:
+            return '%s(%s)' % (callback, json.dumps(j))
+        else:
+            return json.dumps(j)
 
 if __name__ == "__main__":
     app.run()
