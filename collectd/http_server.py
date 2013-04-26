@@ -23,6 +23,16 @@ TIMELINE_KEYSPACE = 'timeline_stats'
 EVENT_KEYSPACE = 'event_stats'
 SERVERS = conf.SERVERS
 
+TYPE2STR = {
+    0:'PT_MIN',
+    1:'PT_MAX',
+    2:'PT_AVG',
+    3:'Q0',
+    4:'Q1',
+    5:'Q2',
+    6:'P9',
+}
+
 def create_cassandra_client(keyspace, servers):
     client = thrift_client.ThriftClient(client_class=Cassandra.Client,
                     servers=servers)
@@ -98,7 +108,7 @@ class time_line:
         l = []
         for item in slice:
             l.append((item.column.name, item.column.value))
-        j = {'slice':l}
+        j = {'slice':l, 't':TYPE2STR[int(cf)]}
         return json.dumps(j)
 
 class event:
