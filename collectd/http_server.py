@@ -14,8 +14,10 @@ urls = (
     '/time_line', 'time_line',
     #/event?category='frequency&key='stats:add_user:host1'&start='0'&finish=''&reversed=0&count=1000&p='m'
     '/event', 'event',
-    #/stats?category='latency'&count=1000
+    #/stats?category='latency'&start=''&finish=''&reversed=0&count=1000
     '/stats', 'stats',
+    #/register
+    '/register', 'register'
 )
 app = web.application(urls, globals())
 
@@ -84,6 +86,22 @@ class ReqProxy(object):
         finally:
             self._eq.put(conn)
 
+    def event_register(self, pk, cf, items):
+        try:
+            conn = self._eq.get(block=True)
+            for item in items:
+                conn.insert_column(pk, cf, item, '')
+        finally:
+            self._eq.put(conn)
+
+    def timeline_register(self, pk, cf, items):
+        try:
+            conn = self._tq.get(block=True)
+            for item in items:
+                conn.insert_column(pk, cf, item, '')
+        finally:
+            self._tq.put(conn)
+
     def _select_slice(self, conn, pk, cf, start, finish, reversed, count):
         return conn.select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=reversed, count=count)
 
@@ -140,21 +158,45 @@ class event:
         else:
             return json.dumps(j)
 
+class register(self):
+    def POST(self):
+        wi = web.input()
+        category = wi.category
+        items = wi.items
+        if category == 'frequency':
+            pk = 'stats_items@frequecy'
+            cf = 'm'
+            req_proxy.event_register(pk, cf, items)
+        elif category == 'latency':
+            pk = 'stats_items@latency'
+            cf = '0'
+            req_proxy.timeline_register(pk, cf, items)
+        j = {'status':0}
+        callback= wi.get('callback', None)
+        if callback:
+            return '%s(%s)' % (callback, json.dumps(j))
+        else:
+            return json.dumps(j)
+
 class stats:
     def GET(self):
         wi = web.input()
         category = wi.category
-        start_key = ''
-        end_key = ''
-        count = int(wi.count)
+        start = wi.get('start', '')
+        finish = wi.get('finish', '')
+        reversed = wi.get('reversed', 0)
+        count = wi.get('count', 1000) 
         if category == 'frequency':
-            slice = req_proxy.event_get_ranges(cf='Y', columns=[], start_key=start_key, end_key=end_key, count=count)
+            pk = 'stats_items@frequecy'
+            cf = 'm'
+            slice = req_proxy.event_select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=int(reversed), count=count)
         elif category == 'latency':
-            slice = req_proxy.timeline_get_ranges(cf='0', columns=[], start_key=start_key, end_key=end_key, count=count)
+            pk = 'stats_items@latency'
+            cf = '0'
+            slice = req_proxy.timeline_select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=int(reversed), count=count)
         l = []
-        daystr = get_daystr()
         for item in slice:
-            l.append(item.key.replace(daystr+':', ''))
+            l.append(item.counter_column.name)
         j = {'slice': l}
         callback= wi.get('callback', None)
         if callback:
