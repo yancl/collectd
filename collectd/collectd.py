@@ -89,7 +89,6 @@ class CassandraWrapper(object):
         self._event_cassandra_api.batch_update(cassandra_batch=cb)
 
     def _batch_update_event_properties(self, update_pairs):
-        print 'update pro pairs:',update_pairs
         update_pairs = self._merge_update_pairs(update_pairs)
         cb = cassandra_api.CassandraAPI.CassandraBatch()
         for (pk, columns) in update_pairs:
@@ -184,10 +183,10 @@ class CassandraWrapper(object):
                 update_pairs.append((t.daystr+':'+self._get_store_pk('alarm', key), columns))
 
             columns = [StoreColumn(cf='properties', name=str(alarm.timestamp)+':'+ 
-                                    self._compose_longest_key('alarm', alarm_key),
+                                    self._compose_longest_key(alarm_key),
                                     value=alarm.reason,
                                     timestamp=alarm.timestamp)]
-            properties_pairs.append((t.daystr+':alarm', columns))
+            reason_pairs.append((t.daystr+':alarm', columns))
         self._batch_update_event(update_pairs)
         self._batch_update_event_properties(reason_pairs)
 
@@ -198,9 +197,9 @@ class CollectorConsumer(object):
         self._eq = Queue(maxsize=q_max_size)
         self._tq = Queue(maxsize=q_max_size)
         self._aq = Queue(maxsize=q_max_size)
-        self._event_worker = self._create_worker(self._event_worker)
-        self._time_worker = self._create_worker(self._time_slice_worker)
-        self._alarm_worker = self._create_worker(self._alarm_worker)
+        self._event_thread = self._create_worker(self._event_worker)
+        self._time_thread = self._create_worker(self._time_slice_worker)
+        self._alarm_thread = self._create_worker(self._alarm_worker)
 
     def add_event(self, events):
         self._eq.put_nowait(events)
@@ -240,10 +239,12 @@ class CollectorConsumer(object):
 
 
     def run(self):
-        self._event_worker.setDaemon(True)
-        self._time_worker.setDaemon(True)
-        self._event_worker.start()
-        self._time_worker.start()
+        self._event_thread.setDaemon(True)
+        self._time_thread.setDaemon(True)
+        self._alarm_thread.setDaemon(True)
+        self._event_thread.start()
+        self._time_thread.start()
+        self._alarm_thread.start()
 
 class CollectorHandler(object):
     def __init__(self, collector):

@@ -16,7 +16,7 @@ urls = (
     '/time_line', 'time_line',
     #/event?category='frequency&key='stats:add_user:host1'&start='0'&finish=''&reversed=0&count=1000&p='m'
     '/event', 'event',
-    #/alarm?category='alarm'&key=''&start=''&finish=''&reversed=0&count=1000&&level=3&host=bear
+    #/alarm?category=backend&key=&level=3&host=bear&start=1367071200&finish=1367081200&reversed=0&count=1000
     '/alarm', 'alarm',
     #/stats?category='latency'&start=''&finish=''&reversed=0&count=1000
     '/stats', 'stats',
@@ -168,23 +168,28 @@ class event:
 class alarm:
     def GET(self):
         wi = web.input()
-        category = wi.category
-        key = wi.key
-        start = wi.start
-        finish = wi.finish
-        reversed = wi.reversed
-        count = int(wi.count)
-        level = int(wi.get('level', 3))
+        category = wi.get('category', '')
+        key = wi.get('key', '')
+        start = wi.get('start', '')
+        finish = wi.get('finish', '')
+        reversed = int(wi.get('reversed', 0))
+        count = int(wi.get('count', 100))
+        level = int(wi.get('level', None))
         host = wi.get('host', '')
-        pk = get_store_pk(category, key)
+        pk = get_store_pk('alarm', '')
         slice = req_proxy.event_select_slice(pk=pk, cf='properties', start=start, finish=finish, reversed=int(reversed), count=count)
         l = []
         for item in slice:
-            (t, cat, level_, host_) = item.column.name.split(':')
-            l.append({'time':t, 'cat':cat, 'level':level_, 'host':host_, 'msg':cPickle.loads(item.column.value)})
-        l = ifilter(lambda x: int(x['level']) == level, l)
+            (t, level_, cat, key, host_) = item.column.name.split(':')
+            l.append({'time':t, 'cat':cat, 'level':level_, 'key': key ,'host':host_, 'msg':item.column.value})
+        if level is not None:
+            l = ifilter(lambda x: int(x['level']) == level, l)
         if host:
             l = ifilter(lambda x: x['host'] == host, l)
+        if category:
+            l = ifilter(lambda x: x['cat'] == category, l)
+        if key:
+            l = ifilter(lambda x: x['key'] == key, l)
         j = {'slice':list(l)}
         callback= wi.get('callback', None)
         if callback:
