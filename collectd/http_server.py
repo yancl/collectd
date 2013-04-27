@@ -5,6 +5,8 @@ from cassandra_client import cassandra_api
 from thrift_client import thrift_client
 from Queue import Queue
 import conf
+import cPickle
+from itertools import ifilter
 
 from datetime import datetime
 import json
@@ -14,6 +16,8 @@ urls = (
     '/time_line', 'time_line',
     #/event?category='frequency&key='stats:add_user:host1'&start='0'&finish=''&reversed=0&count=1000&p='m'
     '/event', 'event',
+    #/alarm?category='alarm'&key=''&start=''&finish=''&reversed=0&count=1000&&level=3&host=bear
+    '/alarm', 'alarm',
     #/stats?category='latency'&start=''&finish=''&reversed=0&count=1000
     '/stats', 'stats',
     #/register
@@ -46,7 +50,10 @@ def get_daystr():
 
 def get_store_pk(category, key):
     daystr = get_daystr()
-    return daystr + ':' + category + ':' + key
+    if key:
+        return daystr + ':' + category + ':' + key
+    else:
+        return daystr + ':' + category
 
 
 class ReqProxy(object):
@@ -157,6 +164,34 @@ class event:
             return '%s(%s)' % (callback, json.dumps(j))
         else:
             return json.dumps(j)
+
+class alarm:
+    def GET(self):
+        wi = web.input()
+        category = wi.category
+        key = wi.key
+        start = wi.start
+        finish = wi.finish
+        reversed = wi.reversed
+        count = int(wi.count)
+        level = int(wi.get('level', 3))
+        host = wi.get('host', '')
+        pk = get_store_pk(category, key)
+        slice = req_proxy.event_select_slice(pk=pk, cf='properties', start=start, finish=finish, reversed=int(reversed), count=count)
+        l = []
+        for item in slice:
+            (t, cat, level_, host_) = item.column.name.split(':')
+            l.append({'time':t, 'cat':cat, 'level':level_, 'host':host_, 'msg':cPickle.loads(item.column.value)})
+        l = ifilter(lambda x: int(x['level']) == level, l)
+        if host:
+            l = ifilter(lambda x: x['host'] == host, l)
+        j = {'slice':list(l)}
+        callback= wi.get('callback', None)
+        if callback:
+            return '%s(%s)' % (callback, json.dumps(j))
+        else:
+            return json.dumps(j)
+
 
 class register():
     def POST(self):

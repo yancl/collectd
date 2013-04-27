@@ -32,6 +32,13 @@ class Iface:
     """
     pass
 
+  def add_alarm(self, alarms):
+    """
+    Parameters:
+     - alarms
+    """
+    pass
+
 
 class Client(Iface):
   def __init__(self, iprot, oprot=None):
@@ -96,6 +103,34 @@ class Client(Iface):
     self._iprot.readMessageEnd()
     return
 
+  def add_alarm(self, alarms):
+    """
+    Parameters:
+     - alarms
+    """
+    self.send_add_alarm(alarms)
+    self.recv_add_alarm()
+
+  def send_add_alarm(self, alarms):
+    self._oprot.writeMessageBegin('add_alarm', TMessageType.CALL, self._seqid)
+    args = add_alarm_args()
+    args.alarms = alarms
+    args.write(self._oprot)
+    self._oprot.writeMessageEnd()
+    self._oprot.trans.flush()
+
+  def recv_add_alarm(self, ):
+    (fname, mtype, rseqid) = self._iprot.readMessageBegin()
+    if mtype == TMessageType.EXCEPTION:
+      x = TApplicationException()
+      x.read(self._iprot)
+      self._iprot.readMessageEnd()
+      raise x
+    result = add_alarm_result()
+    result.read(self._iprot)
+    self._iprot.readMessageEnd()
+    return
+
 
 class Processor(Iface, TProcessor):
   def __init__(self, handler):
@@ -103,6 +138,7 @@ class Processor(Iface, TProcessor):
     self._processMap = {}
     self._processMap["add_event"] = Processor.process_add_event
     self._processMap["add_time_slice"] = Processor.process_add_time_slice
+    self._processMap["add_alarm"] = Processor.process_add_alarm
 
   def process(self, iprot, oprot):
     (name, type, seqid) = iprot.readMessageBegin()
@@ -141,6 +177,17 @@ class Processor(Iface, TProcessor):
     oprot.writeMessageEnd()
     oprot.trans.flush()
 
+  def process_add_alarm(self, seqid, iprot, oprot):
+    args = add_alarm_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = add_alarm_result()
+    self._handler.add_alarm(args.alarms)
+    oprot.writeMessageBegin("add_alarm", TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
+
 
 # HELPER FUNCTIONS AND STRUCTURES
 
@@ -170,11 +217,11 @@ class add_event_args:
       if fid == 1:
         if ftype == TType.LIST:
           self.events = []
-          (_etype26, _size23) = iprot.readListBegin()
-          for _i27 in xrange(_size23):
-            _elem28 = Event()
-            _elem28.read(iprot)
-            self.events.append(_elem28)
+          (_etype17, _size14) = iprot.readListBegin()
+          for _i18 in xrange(_size14):
+            _elem19 = Event()
+            _elem19.read(iprot)
+            self.events.append(_elem19)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -191,8 +238,8 @@ class add_event_args:
     if self.events is not None:
       oprot.writeFieldBegin('events', TType.LIST, 1)
       oprot.writeListBegin(TType.STRUCT, len(self.events))
-      for iter29 in self.events:
-        iter29.write(oprot)
+      for iter20 in self.events:
+        iter20.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -281,11 +328,11 @@ class add_time_slice_args:
       if fid == 1:
         if ftype == TType.LIST:
           self.slices = []
-          (_etype33, _size30) = iprot.readListBegin()
-          for _i34 in xrange(_size30):
-            _elem35 = TimeSlice()
-            _elem35.read(iprot)
-            self.slices.append(_elem35)
+          (_etype24, _size21) = iprot.readListBegin()
+          for _i25 in xrange(_size21):
+            _elem26 = TimeSlice()
+            _elem26.read(iprot)
+            self.slices.append(_elem26)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -302,8 +349,8 @@ class add_time_slice_args:
     if self.slices is not None:
       oprot.writeFieldBegin('slices', TType.LIST, 1)
       oprot.writeListBegin(TType.STRUCT, len(self.slices))
-      for iter36 in self.slices:
-        iter36.write(oprot)
+      for iter27 in self.slices:
+        iter27.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -348,6 +395,117 @@ class add_time_slice_result:
       oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
       return
     oprot.writeStructBegin('add_time_slice_result')
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class add_alarm_args:
+  """
+  Attributes:
+   - alarms
+  """
+
+  thrift_spec = (
+    None, # 0
+    (1, TType.LIST, 'alarms', (TType.STRUCT,(Alarm, Alarm.thrift_spec)), None, ), # 1
+  )
+
+  def __init__(self, alarms=None,):
+    self.alarms = alarms
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 1:
+        if ftype == TType.LIST:
+          self.alarms = []
+          (_etype31, _size28) = iprot.readListBegin()
+          for _i32 in xrange(_size28):
+            _elem33 = Alarm()
+            _elem33.read(iprot)
+            self.alarms.append(_elem33)
+          iprot.readListEnd()
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('add_alarm_args')
+    if self.alarms is not None:
+      oprot.writeFieldBegin('alarms', TType.LIST, 1)
+      oprot.writeListBegin(TType.STRUCT, len(self.alarms))
+      for iter34 in self.alarms:
+        iter34.write(oprot)
+      oprot.writeListEnd()
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class add_alarm_result:
+
+  thrift_spec = (
+  )
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('add_alarm_result')
     oprot.writeFieldStop()
     oprot.writeStructEnd()
 

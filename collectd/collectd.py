@@ -1,6 +1,5 @@
 from datetime import datetime
 import time
-import cPickle
 
 from collections import namedtuple
 from Queue import Queue
@@ -90,6 +89,7 @@ class CassandraWrapper(object):
         self._event_cassandra_api.batch_update(cassandra_batch=cb)
 
     def _batch_update_event_properties(self, update_pairs):
+        print 'update pro pairs:',update_pairs
         update_pairs = self._merge_update_pairs(update_pairs)
         cb = cassandra_api.CassandraAPI.CassandraBatch()
         for (pk, columns) in update_pairs:
@@ -148,16 +148,7 @@ class CassandraWrapper(object):
             for key in keys:
                 columns = [StoreColumn(cf='m', name=str(t.m['m']), value=event.value, timestamp=0)]
                 update_pairs.append((t.daystr+':'+self._get_store_pk(event.category, key), columns))
-
-            if event.properties:
-                columns = [StoreColumn(cf='properties', name=str(event.timestamp)+':'+ 
-                                        self._get_store_pk(event.category, self._compose_longest_key(event.key)),
-                                        value=cPickle.dumps(event.properties), timestamp=event.timestamp)]
-                properties_pairs.append((t.daystr+':'+event.category, columns))
         self._batch_update_event(update_pairs)
-
-        if properties_pairs:
-            self._batch_update_event_properties(properties_pairs)
 
     def _get_store_pk(self, category, key):
         return category + ':' + key
@@ -172,20 +163,53 @@ class CassandraWrapper(object):
             update_pairs.append((pk, columns))
         self._batch_update_timeline(update_pairs)
 
+    def add_alarm(self, alarms):
+        update_pairs = []
+        reason_pairs = []
+        for alarm in alarms:
+            alarm_key = (str(alarm.level), alarm.category, alarm.key, alarm.host)
+            t = EventDateWrapper(alarm.timestamp)
+            keys = self._denormalize_keys(alarm_key)
+            for cf in EventCF:
+                if cf == 'm':
+                    continue
+                for key in keys:
+                    columns = [StoreColumn(cf=cf, name=str(t.m[cf]), value=1, timestamp=0)]  #counter do not need timestamp
+                    update_pairs.append((self._get_store_pk('alarm', key), columns))
+
+            #process column family 'm',it is special 
+            #because of huge amount if we do not store it according to DAY.
+            for key in keys:
+                columns = [StoreColumn(cf='m', name=str(t.m['m']), value=1, timestamp=0)]
+                update_pairs.append((t.daystr+':'+self._get_store_pk('alarm', key), columns))
+
+            columns = [StoreColumn(cf='properties', name=str(alarm.timestamp)+':'+ 
+                                    self._compose_longest_key('alarm', alarm_key),
+                                    value=alarm.reason,
+                                    timestamp=alarm.timestamp)]
+            properties_pairs.append((t.daystr+':alarm', columns))
+        self._batch_update_event(update_pairs)
+        self._batch_update_event_properties(reason_pairs)
+
 
 class CollectorConsumer(object):
     def __init__(self, q_max_size, store):
         self._store = store 
         self._eq = Queue(maxsize=q_max_size)
         self._tq = Queue(maxsize=q_max_size)
+        self._aq = Queue(maxsize=q_max_size)
         self._event_worker = self._create_worker(self._event_worker)
         self._time_worker = self._create_worker(self._time_slice_worker)
+        self._alarm_worker = self._create_worker(self._alarm_worker)
 
     def add_event(self, events):
         self._eq.put_nowait(events)
 
     def add_time_slice(self, slices):
         self._tq.put_nowait(slices)
+
+    def add_alarm(self, alarms):
+        self._aq.put_nowait(alarms)
 
     def _create_worker(self, runner):
         return Thread(target=runner)
@@ -206,6 +230,15 @@ class CollectorConsumer(object):
             except Exception,e:
                 print e
 
+    def _alarm_worker(self):
+        while True:
+            try:
+                alarms = self._aq.get(block=True)
+                self._store.add_alarm(alarms)
+            except Exception,e:
+                print e
+
+
     def run(self):
         self._event_worker.setDaemon(True)
         self._time_worker.setDaemon(True)
@@ -221,6 +254,9 @@ class CollectorHandler(object):
 
     def add_time_slice(self, slices):
         self._collector.add_time_slice(slices)
+
+    def add_alarm(self, alarms):
+        self._collector.add_alarm(alarms)
 
 collector_consumer = CollectorConsumer(q_max_size=100000,
                                     store=CassandraWrapper(timeline_keyspace='timeline_stats',

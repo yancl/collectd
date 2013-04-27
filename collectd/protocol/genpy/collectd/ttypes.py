@@ -53,7 +53,6 @@ class Event:
    - category
    - key
    - value
-   - properties
   """
 
   thrift_spec = (
@@ -62,15 +61,13 @@ class Event:
     (2, TType.STRING, 'category', None, None, ), # 2
     (3, TType.LIST, 'key', (TType.STRING,None), None, ), # 3
     (4, TType.I64, 'value', None, None, ), # 4
-    (5, TType.MAP, 'properties', (TType.STRING,None,TType.STRING,None), None, ), # 5
   )
 
-  def __init__(self, timestamp=None, category=None, key=None, value=None, properties=None,):
+  def __init__(self, timestamp=None, category=None, key=None, value=None,):
     self.timestamp = timestamp
     self.category = category
     self.key = key
     self.value = value
-    self.properties = properties
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -106,17 +103,6 @@ class Event:
           self.value = iprot.readI64();
         else:
           iprot.skip(ftype)
-      elif fid == 5:
-        if ftype == TType.MAP:
-          self.properties = {}
-          (_ktype7, _vtype8, _size6 ) = iprot.readMapBegin() 
-          for _i10 in xrange(_size6):
-            _key11 = iprot.readString();
-            _val12 = iprot.readString();
-            self.properties[_key11] = _val12
-          iprot.readMapEnd()
-        else:
-          iprot.skip(ftype)
       else:
         iprot.skip(ftype)
       iprot.readFieldEnd()
@@ -138,21 +124,13 @@ class Event:
     if self.key is not None:
       oprot.writeFieldBegin('key', TType.LIST, 3)
       oprot.writeListBegin(TType.STRING, len(self.key))
-      for iter13 in self.key:
-        oprot.writeString(iter13)
+      for iter6 in self.key:
+        oprot.writeString(iter6)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     if self.value is not None:
       oprot.writeFieldBegin('value', TType.I64, 4)
       oprot.writeI64(self.value)
-      oprot.writeFieldEnd()
-    if self.properties is not None:
-      oprot.writeFieldBegin('properties', TType.MAP, 5)
-      oprot.writeMapBegin(TType.STRING, TType.STRING, len(self.properties))
-      for kiter14,viter15 in self.properties.items():
-        oprot.writeString(kiter14)
-        oprot.writeString(viter15)
-      oprot.writeMapEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
@@ -294,11 +272,11 @@ class TimeSlice:
       elif fid == 4:
         if ftype == TType.LIST:
           self.points = []
-          (_etype19, _size16) = iprot.readListBegin()
-          for _i20 in xrange(_size16):
-            _elem21 = Point()
-            _elem21.read(iprot)
-            self.points.append(_elem21)
+          (_etype10, _size7) = iprot.readListBegin()
+          for _i11 in xrange(_size7):
+            _elem12 = Point()
+            _elem12.read(iprot)
+            self.points.append(_elem12)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -327,9 +305,129 @@ class TimeSlice:
     if self.points is not None:
       oprot.writeFieldBegin('points', TType.LIST, 4)
       oprot.writeListBegin(TType.STRUCT, len(self.points))
-      for iter22 in self.points:
-        iter22.write(oprot)
+      for iter13 in self.points:
+        iter13.write(oprot)
       oprot.writeListEnd()
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)
+
+class Alarm:
+  """
+  Attributes:
+   - timestamp
+   - category
+   - key
+   - reason
+   - level
+   - host
+  """
+
+  thrift_spec = (
+    None, # 0
+    (1, TType.I32, 'timestamp', None, None, ), # 1
+    (2, TType.STRING, 'category', None, None, ), # 2
+    (3, TType.STRING, 'key', None, None, ), # 3
+    (4, TType.STRING, 'reason', None, None, ), # 4
+    (5, TType.I32, 'level', None, None, ), # 5
+    (6, TType.STRING, 'host', None, None, ), # 6
+  )
+
+  def __init__(self, timestamp=None, category=None, key=None, reason=None, level=None, host=None,):
+    self.timestamp = timestamp
+    self.category = category
+    self.key = key
+    self.reason = reason
+    self.level = level
+    self.host = host
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 1:
+        if ftype == TType.I32:
+          self.timestamp = iprot.readI32();
+        else:
+          iprot.skip(ftype)
+      elif fid == 2:
+        if ftype == TType.STRING:
+          self.category = iprot.readString();
+        else:
+          iprot.skip(ftype)
+      elif fid == 3:
+        if ftype == TType.STRING:
+          self.key = iprot.readString();
+        else:
+          iprot.skip(ftype)
+      elif fid == 4:
+        if ftype == TType.STRING:
+          self.reason = iprot.readString();
+        else:
+          iprot.skip(ftype)
+      elif fid == 5:
+        if ftype == TType.I32:
+          self.level = iprot.readI32();
+        else:
+          iprot.skip(ftype)
+      elif fid == 6:
+        if ftype == TType.STRING:
+          self.host = iprot.readString();
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('Alarm')
+    if self.timestamp is not None:
+      oprot.writeFieldBegin('timestamp', TType.I32, 1)
+      oprot.writeI32(self.timestamp)
+      oprot.writeFieldEnd()
+    if self.category is not None:
+      oprot.writeFieldBegin('category', TType.STRING, 2)
+      oprot.writeString(self.category)
+      oprot.writeFieldEnd()
+    if self.key is not None:
+      oprot.writeFieldBegin('key', TType.STRING, 3)
+      oprot.writeString(self.key)
+      oprot.writeFieldEnd()
+    if self.reason is not None:
+      oprot.writeFieldBegin('reason', TType.STRING, 4)
+      oprot.writeString(self.reason)
+      oprot.writeFieldEnd()
+    if self.level is not None:
+      oprot.writeFieldBegin('level', TType.I32, 5)
+      oprot.writeI32(self.level)
+      oprot.writeFieldEnd()
+    if self.host is not None:
+      oprot.writeFieldBegin('host', TType.STRING, 6)
+      oprot.writeString(self.host)
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()

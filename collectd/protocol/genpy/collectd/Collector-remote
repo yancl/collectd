@@ -25,6 +25,7 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
   print 'Functions:'
   print '  void add_event( events)'
   print '  void add_time_slice( slices)'
+  print '  void add_alarm( alarms)'
   print ''
   sys.exit(0)
 
@@ -87,6 +88,12 @@ elif cmd == 'add_time_slice':
     print 'add_time_slice requires 1 args'
     sys.exit(1)
   pp.pprint(client.add_time_slice(eval(args[0]),))
+
+elif cmd == 'add_alarm':
+  if len(args) != 1:
+    print 'add_alarm requires 1 args'
+    sys.exit(1)
+  pp.pprint(client.add_alarm(eval(args[0]),))
 
 else:
   print 'Unrecognized method %s' % cmd

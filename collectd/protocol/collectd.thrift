@@ -4,7 +4,7 @@ struct Event {
     2: string category,
     3: list<string> key,
     4: i64 value,
-    5: optional map<string, string> properties
+    #5: optional map<string, string> properties
 }
 
 enum ETimeSlicePointType
@@ -32,7 +32,17 @@ struct TimeSlice {
     4: list<Point> points,
 }
 
+struct Alarm {
+    1: i32 timestamp,
+    2: string category,
+    3: string key,
+    4: string reason,
+    5: i32 level,
+    6: string host,
+}
+
 service Collector {
     void add_event(1: list<Event> events)
     void add_time_slice(1: list<TimeSlice> slices)
+    void add_alarm(1: list<Alarm> alarms)
 }

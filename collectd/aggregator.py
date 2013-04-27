@@ -3,7 +3,7 @@ import socket
 from collections import defaultdict
 from threading import Thread
 from client import Stats
-from protocol.genpy.collectd.ttypes import Point, Event, TimeSlice, ETimeSlicePointType
+from protocol.genpy.collectd.ttypes import Point, Event, Alarm, TimeSlice, ETimeSlicePointType
 from utils import now
 from collections import namedtuple
 from Queue import Queue
@@ -17,12 +17,11 @@ class Aggregator(object):
     ALARM_LEVEL_INFO = 3
 
     __slots__ = ['_aggregator_time', '_event', '_timeline', '_alarm', '_rotate_thread', '_report_thread', \
-                '_reporter', '_hostname', '_event_category', '_timeline_category', '_alarm_category','_q']
+                '_reporter', '_hostname', '_event_category', '_timeline_category', '_q']
     def __init__(self, event_category='frequency', timeline_category='latency', alarm_category='alarm',
                 server='127.0.0.1', port=1464, aggregator_time=30):
         self._event_category = event_category
         self._timeline_category = timeline_category
-        self._alarm_category = alarm_category
         self._reporter = Stats(server=server, port=port)
         self._aggregator_time = aggregator_time
         self._event = defaultdict(int)
@@ -33,8 +32,8 @@ class Aggregator(object):
         self._hostname = self._get_host_name()
         self._q = Queue(maxsize=100000)
 
-    def add_alarm(self, level, reason):
-        self._alarm.append((level, reason))
+    def add_alarm(self, level, category, key, reason):
+        self._alarm.append((level, category, key, reason))
 
     def incr_event_counter(self, key, val=1):
         self._event[key] += 1
@@ -89,13 +88,13 @@ class Aggregator(object):
             self._reporter.add_time_slices(time_slices)
 
     def _report_alarm(self, alarm_l):
-        events = []
+        alarms = []
         current = now()
-        for (level, reason) in alarm_l:
-            events.append(Event(timestamp=current, category=self._alarm_category,
-                    key=[level, self._hostname], value=1, properties=dict(reason=reason)))
-        if events:
-            self._reporter.add_events(events)
+        for (level, category, key, reason) in alarm_l:
+            alarms.append(Alarm(timestamp=current, category=category, key=key,
+                    reason=reason, level=level, host=self._hostname))
+        if alarms:
+            self._reporter.add_alarms(alarms)
 
     def _get_host_name(self):
         return socket.gethostname()
