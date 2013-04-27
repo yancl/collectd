@@ -165,8 +165,8 @@ class register():
         items = wi.items
         if category == 'frequency':
             pk = 'stats_items@frequecy'
-            cf = 'm'
-            req_proxy.event_register(pk, cf, items)
+            cf = '0'
+            req_proxy.timeline_register(pk, cf, items)
         elif category == 'latency':
             pk = 'stats_items@latency'
             cf = '0'
@@ -184,19 +184,19 @@ class stats:
         category = wi.category
         start = wi.get('start', '')
         finish = wi.get('finish', '')
-        reversed = wi.get('reversed', 0)
-        count = wi.get('count', 1000) 
+        reversed = int(wi.get('reversed', 0))
+        count = int(wi.get('count', 1000))
         if category == 'frequency':
             pk = 'stats_items@frequecy'
-            cf = 'm'
-            slice = req_proxy.event_select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=int(reversed), count=count)
+            cf = '0'
+            slice = req_proxy.timeline_select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=int(reversed), count=count)
         elif category == 'latency':
             pk = 'stats_items@latency'
             cf = '0'
             slice = req_proxy.timeline_select_slice(pk=pk, cf=cf, start=start, finish=finish, reversed=int(reversed), count=count)
         l = []
         for item in slice:
-            l.append(item.counter_column.name)
+            l.append(item.column.name)
         j = {'slice': l}
         callback= wi.get('callback', None)
         if callback:
