@@ -1,5 +1,6 @@
 from datetime import datetime
 import time
+import cPickle
 
 from collections import namedtuple
 from Queue import Queue
@@ -151,7 +152,7 @@ class CassandraWrapper(object):
             if event.properties:
                 columns = [StoreColumn(cf='properties', name=str(event.timestamp)+':'+ 
                                         self._get_store_pk(event.category, self._compose_longest_key(event.key)),
-                                        value=event.value, timestamp=event.timestamp)]
+                                        value=cPickle.dumps(event.properties), timestamp=event.timestamp)]
                 properties_pairs.append((t.daystr+':'+event.category, columns))
         self._batch_update_event(update_pairs)
 
