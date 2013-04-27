@@ -158,7 +158,7 @@ class event:
         else:
             return json.dumps(j)
 
-class register(self):
+class register():
     def POST(self):
         wi = web.input()
         category = wi.category
