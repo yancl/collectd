@@ -53,6 +53,7 @@ class Event:
    - category
    - key
    - value
+   - properties
   """
 
   thrift_spec = (
@@ -61,13 +62,15 @@ class Event:
     (2, TType.STRING, 'category', None, None, ), # 2
     (3, TType.LIST, 'key', (TType.STRING,None), None, ), # 3
     (4, TType.I64, 'value', None, None, ), # 4
+    (5, TType.MAP, 'properties', (TType.STRING,None,TType.STRING,None), None, ), # 5
   )
 
-  def __init__(self, timestamp=None, category=None, key=None, value=None,):
+  def __init__(self, timestamp=None, category=None, key=None, value=None, properties=None,):
     self.timestamp = timestamp
     self.category = category
     self.key = key
     self.value = value
+    self.properties = properties
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -103,6 +106,17 @@ class Event:
           self.value = iprot.readI64();
         else:
           iprot.skip(ftype)
+      elif fid == 5:
+        if ftype == TType.MAP:
+          self.properties = {}
+          (_ktype7, _vtype8, _size6 ) = iprot.readMapBegin() 
+          for _i10 in xrange(_size6):
+            _key11 = iprot.readString();
+            _val12 = iprot.readString();
+            self.properties[_key11] = _val12
+          iprot.readMapEnd()
+        else:
+          iprot.skip(ftype)
       else:
         iprot.skip(ftype)
       iprot.readFieldEnd()
@@ -124,13 +138,21 @@ class Event:
     if self.key is not None:
       oprot.writeFieldBegin('key', TType.LIST, 3)
       oprot.writeListBegin(TType.STRING, len(self.key))
-      for iter6 in self.key:
-        oprot.writeString(iter6)
+      for iter13 in self.key:
+        oprot.writeString(iter13)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     if self.value is not None:
       oprot.writeFieldBegin('value', TType.I64, 4)
       oprot.writeI64(self.value)
+      oprot.writeFieldEnd()
+    if self.properties is not None:
+      oprot.writeFieldBegin('properties', TType.MAP, 5)
+      oprot.writeMapBegin(TType.STRING, TType.STRING, len(self.properties))
+      for kiter14,viter15 in self.properties.items():
+        oprot.writeString(kiter14)
+        oprot.writeString(viter15)
+      oprot.writeMapEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
@@ -272,11 +294,11 @@ class TimeSlice:
       elif fid == 4:
         if ftype == TType.LIST:
           self.points = []
-          (_etype10, _size7) = iprot.readListBegin()
-          for _i11 in xrange(_size7):
-            _elem12 = Point()
-            _elem12.read(iprot)
-            self.points.append(_elem12)
+          (_etype19, _size16) = iprot.readListBegin()
+          for _i20 in xrange(_size16):
+            _elem21 = Point()
+            _elem21.read(iprot)
+            self.points.append(_elem21)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -305,8 +327,8 @@ class TimeSlice:
     if self.points is not None:
       oprot.writeFieldBegin('points', TType.LIST, 4)
       oprot.writeListBegin(TType.STRUCT, len(self.points))
-      for iter13 in self.points:
-        iter13.write(oprot)
+      for iter22 in self.points:
+        iter22.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()

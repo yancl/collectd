@@ -170,11 +170,11 @@ class add_event_args:
       if fid == 1:
         if ftype == TType.LIST:
           self.events = []
-          (_etype17, _size14) = iprot.readListBegin()
-          for _i18 in xrange(_size14):
-            _elem19 = Event()
-            _elem19.read(iprot)
-            self.events.append(_elem19)
+          (_etype26, _size23) = iprot.readListBegin()
+          for _i27 in xrange(_size23):
+            _elem28 = Event()
+            _elem28.read(iprot)
+            self.events.append(_elem28)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -191,8 +191,8 @@ class add_event_args:
     if self.events is not None:
       oprot.writeFieldBegin('events', TType.LIST, 1)
       oprot.writeListBegin(TType.STRUCT, len(self.events))
-      for iter20 in self.events:
-        iter20.write(oprot)
+      for iter29 in self.events:
+        iter29.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -281,11 +281,11 @@ class add_time_slice_args:
       if fid == 1:
         if ftype == TType.LIST:
           self.slices = []
-          (_etype24, _size21) = iprot.readListBegin()
-          for _i25 in xrange(_size21):
-            _elem26 = TimeSlice()
-            _elem26.read(iprot)
-            self.slices.append(_elem26)
+          (_etype33, _size30) = iprot.readListBegin()
+          for _i34 in xrange(_size30):
+            _elem35 = TimeSlice()
+            _elem35.read(iprot)
+            self.slices.append(_elem35)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -302,8 +302,8 @@ class add_time_slice_args:
     if self.slices is not None:
       oprot.writeFieldBegin('slices', TType.LIST, 1)
       oprot.writeListBegin(TType.STRUCT, len(self.slices))
-      for iter27 in self.slices:
-        iter27.write(oprot)
+      for iter36 in self.slices:
+        iter36.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()

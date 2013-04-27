@@ -12,19 +12,24 @@ ConsumeItem = namedtuple('ConsumeItem', 'content, ctype')
 
 class Aggregator(object):
     __slots__ = ['_aggregator_time', '_event', '_timeline', '_rotate_thread', '_report_thread', \
-                '_reporter', '_hostname', '_event_category', '_timeline_category', '_q']
-    def __init__(self, event_category='frequency', timeline_category='latency',
+                '_reporter', '_hostname', '_event_category', '_timeline_category', '_alarm_category','_q']
+    def __init__(self, event_category='frequency', timeline_category='latency', alarm_category='alarm',
                 server='127.0.0.1', port=1464, aggregator_time=30):
         self._event_category = event_category
         self._timeline_category = timeline_category
+        self._alarm_category = alarm_category
         self._reporter = Stats(server=server, port=port)
         self._aggregator_time = aggregator_time
         self._event = defaultdict(int)
         self._timeline = defaultdict(list)
+        self._alarm = []
         self._rotate_thread = Thread(target=self._rotate_worker)
         self._report_thread = Thread(target=self._report_worker)
         self._hostname = self._get_host_name()
         self._q = Queue(maxsize=100000)
+
+    def add_alarm(self, level, reason):
+        self._alarm.append((level, reason))
 
     def incr_event_counter(self, key, val=1):
         self._event[key] += 1
@@ -38,10 +43,13 @@ class Aggregator(object):
                 time.sleep(self._aggregator_time)
                 event = self._event
                 timeline = self._timeline
+                alarm = self._alarm
                 self._event = defaultdict(int)
                 self._timeline = defaultdict(list)
+                self._alarm = [] 
                 self._q.put_nowait(ConsumeItem(content=event, ctype=0))
                 self._q.put_nowait(ConsumeItem(content=timeline, ctype=1))
+                self._q.put_nowait(ConsumeItem(content=alarm, ctype=2))
             except Exception,e:
                 print 'rotate ex:',e
 
@@ -53,6 +61,8 @@ class Aggregator(object):
                     self._report_event(item.content)
                 elif item.ctype == 1:
                     self._report_timeline(item.content)
+                elif item.ctype == 2:
+                    self._report_alarm(item.content)
             except Exception, e:
                 print 'report ex:',e
 
@@ -72,6 +82,15 @@ class Aggregator(object):
             time_slices.append(TimeSlice(timestamp=current, category=self._timeline_category, key=k, points=points))
         if time_slices:
             self._reporter.add_time_slices(time_slices)
+
+    def _report_alarm(self, alarm_l):
+        events = []
+        current = now()
+        for (level, reason) in alarm_l:
+            events.append(Event(timestamp=current, category=self._alarm_category,
+                    key=[level, self._hostname], value=1, properties=dict(reason=reason)))
+        if events:
+            self._reporter.add_events(events)
 
     def _get_host_name(self):
         return socket.gethostname()

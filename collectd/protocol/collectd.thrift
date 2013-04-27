@@ -3,7 +3,8 @@ struct Event {
     1: i32 timestamp,
     2: string category,
     3: list<string> key,
-    4: i64 value
+    4: i64 value,
+    5: optional map<string, string> properties
 }
 
 enum ETimeSlicePointType
