@@ -18,3 +18,9 @@ class Stats(object):
 
     def add_time_slices(self, slices):
         self._client.add_time_slice(slices)
+
+    def add_alarm(self, alarm):
+        self._client.add_alarm([alarm])
+
+    def add_alarms(self, alarms):
+        self._client.add_alarm(alarms)
