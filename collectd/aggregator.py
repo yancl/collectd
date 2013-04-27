@@ -16,7 +16,7 @@ class Aggregator(object):
     ALARM_LEVEL_WARNING = 2
     ALARM_LEVEL_INFO = 3
 
-    __slots__ = ['_aggregator_time', '_event', '_timeline', '_rotate_thread', '_report_thread', \
+    __slots__ = ['_aggregator_time', '_event', '_timeline', '_alarm', '_rotate_thread', '_report_thread', \
                 '_reporter', '_hostname', '_event_category', '_timeline_category', '_alarm_category','_q']
     def __init__(self, event_category='frequency', timeline_category='latency', alarm_category='alarm',
                 server='127.0.0.1', port=1464, aggregator_time=30):
