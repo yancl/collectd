@@ -88,7 +88,7 @@ class Aggregator(object):
         p9 = vs0[((len(vs0) * 9) /10)]
         points = [Point(k=ETimeSlicePointType.PT_MIN, v='%.4f' % vs0[0]),
                   Point(k=ETimeSlicePointType.PT_MAX, v='%.4f' % vs0[-1]),
-                  Point(k=ETimeSlicePointType.PT_MAX, v='%.4f' % avg),
+                  Point(k=ETimeSlicePointType.PT_AVG, v='%.4f' % avg),
                   Point(k=ETimeSlicePointType.PT_Q0, v='%.4f' % q0),
                   Point(k=ETimeSlicePointType.PT_Q1, v='%.4f' % q1),
                   Point(k=ETimeSlicePointType.PT_Q2, v='%.4f' % q2),
