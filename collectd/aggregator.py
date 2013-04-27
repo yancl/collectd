@@ -14,6 +14,7 @@ class Aggregator(object):
     ALARM_LEVEL_FATAL = 0
     ALARM_LEVEL_ERROR = 1
     ALARM_LEVEL_WARNING = 2
+    ALARM_LEVEL_INFO = 3
 
     __slots__ = ['_aggregator_time', '_event', '_timeline', '_rotate_thread', '_report_thread', \
                 '_reporter', '_hostname', '_event_category', '_timeline_category', '_alarm_category','_q']
