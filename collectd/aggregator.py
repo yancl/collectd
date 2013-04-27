@@ -10,6 +10,11 @@ from Queue import Queue
 
 ConsumeItem = namedtuple('ConsumeItem', 'content, ctype')
 
+class AlarmLevel(object):
+    FATAL = 0
+    ERROR = 1
+    WARNING = 2
+
 class Aggregator(object):
     __slots__ = ['_aggregator_time', '_event', '_timeline', '_rotate_thread', '_report_thread', \
                 '_reporter', '_hostname', '_event_category', '_timeline_category', '_alarm_category','_q']
