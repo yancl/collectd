@@ -158,7 +158,7 @@ class event:
         l = []
         for item in slice:
             l.append((item.counter_column.name, item.counter_column.value))
-        j = {'slice':l}
+        j = {'slice':l, 'k':key}
         callback= wi.get('callback', None)
         if callback:
             return '%s(%s)' % (callback, json.dumps(j))
