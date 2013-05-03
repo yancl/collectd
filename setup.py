@@ -22,6 +22,7 @@ setup(
         license='MIT License',
         zip_safe=False,
         install_requires=[
+            'distribute',
             'cassandra_client >= 0.10',
         ],
         tests_require=[
