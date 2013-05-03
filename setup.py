@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 import sys
-from distutils.core import setup
+from setuptools import setup
 
 if sys.argv[-1] == 'publish':
     os.system('python setup.py sdist upload -r internal')
@@ -22,7 +22,7 @@ setup(
         license='MIT License',
         zip_safe=False,
         install_requires=[
-            'setuptools',
+            'cassandra_client >= 0.10',
         ],
         tests_require=[
             'nose',
