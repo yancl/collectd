@@ -17,9 +17,6 @@ from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from thrift.server.TNonblockingServer import TNonblockingServer
 
-import conf
-
-
 StoreColumn = namedtuple('StoreColumn', 'cf name value timestamp')
 
 EventCF = ('Y', 'M', 'D', 'H', 'm')
@@ -45,7 +42,7 @@ class TimeLineDateWrapper(object):
         self.daystr = '%d-%d-%d' % (ts.tm_year, ts.tm_mon, ts.tm_mday)
 
 class CassandraWrapper(object):
-    def __init__(self, timeline_keyspace, event_keyspace, servers=conf.SERVERS, options={'timeout':10}):
+    def __init__(self, timeline_keyspace, event_keyspace, servers, options):
         timeline_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
                         servers=servers, options=options)
         event_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
@@ -259,12 +256,10 @@ class CollectorHandler(object):
     def add_alarm(self, alarms):
         self._collector.add_alarm(alarms)
 
-collector_consumer = CollectorConsumer(q_max_size=100000,
-                                    store=CassandraWrapper(timeline_keyspace='timeline_stats',
-                                                            event_keyspace='event_stats'))
+
 
 class Server(object):
-    def __init__(self, host, port):
+    def __init__(self, host, port, collector_consumer):
         handler = CollectorHandler(collector_consumer)
         processor = Processor(handler)
         transport = TSocket.TServerSocket(host, port)
@@ -279,5 +274,40 @@ class Server(object):
 
 
 if __name__ == '__main__':
+    import os
+    from optparse import OptionParser
+
+    parser = OptionParser()
+    parser.add_option("-f", "--file", action="store", type="string", dest="filename",
+                        help="read conf for cassandra servers [must]")
+    parser.add_option("-t", "--timeout", action="store", type="int", dest="timeout",
+                        help="the timeout of operations to cassandra servers", default=10)
+    parser.add_option("-q", "--quiet",
+                        action="store_false", dest="verbose", default=True,
+                        help="don't print status messages to stdout")
+
+    (options, args) = parser.parse_args()
+    print options
+    if not options.filename:
+        parser.error("-f is a must args")
+        os.exit(1)
+
+    servers = []
+    with open(options.filename, 'r') as f:
+        for line in f:
+            (name, hosts) = line.strip().split('=')
+            if name == 'SERVERS':
+                servers = hosts.split(',')
+
+    if not servers:
+        parser.error("conf file is not valide, see servers.conf for example")
+        os.exit(1)
+
+    server_options={'timeout':options.timeout}
+
+    collector_consumer = CollectorConsumer(q_max_size=100000,
+                                           store=CassandraWrapper( timeline_keyspace='timeline_stats',
+                                                    event_keyspace='event_stats', servers=servers,
+                                                    options=server_options))
     collector_consumer.run()
-    Server(host='127.0.0.1', port=1464).serve()
+    Server(host='127.0.0.1', port=1464, collector_consumer=collector_consumer).serve()
