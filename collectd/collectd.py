@@ -47,8 +47,11 @@ class CassandraWrapper(object):
                         servers=servers, options=options)
         event_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
                         servers=servers, options=options)
+        alarm_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
+                        servers=servers, options=options)
         self._timeline_cassandra_api = cassandra_api.CassandraAPI(handle=timeline_client, keyspace=timeline_keyspace)
         self._event_cassandra_api = cassandra_api.CassandraAPI(handle=event_client, keyspace=event_keyspace)
+        self._alarm_cassandra_api = cassandra_api.CassandraAPI(handle=alarm_client, keyspace=event_keyspace)
 
     def _batch_update_timeline(self, update_pairs):
         update_pairs = self._merge_update_pairs(update_pairs)
@@ -68,7 +71,7 @@ class CassandraWrapper(object):
             cb.add(pk=pk, cassandra_batch_cf=cbf)
         self._timeline_cassandra_api.batch_update(cassandra_batch=cb)
 
-    def _batch_update_event(self, update_pairs):
+    def _batch_update_event(self, handle, update_pairs):
         update_pairs = self._merge_update_pairs(update_pairs)
         cb = cassandra_api.CassandraAPI.CassandraBatch()
         for (pk, columns) in update_pairs:
@@ -83,9 +86,9 @@ class CassandraWrapper(object):
                 cbf.add(cf=column.cf, mutations=mutations)
 
             cb.add(pk=pk, cassandra_batch_cf=cbf)
-        self._event_cassandra_api.batch_update(cassandra_batch=cb)
+        handle.batch_update(cassandra_batch=cb)
 
-    def _batch_update_event_properties(self, update_pairs):
+    def _batch_update_event_properties(self, handle, update_pairs):
         update_pairs = self._merge_update_pairs(update_pairs)
         cb = cassandra_api.CassandraAPI.CassandraBatch()
         for (pk, columns) in update_pairs:
@@ -101,7 +104,7 @@ class CassandraWrapper(object):
                 cbf.add(cf=column.cf, mutations=mutations)
 
             cb.add(pk=pk, cassandra_batch_cf=cbf)
-        self._event_cassandra_api.batch_update(cassandra_batch=cb)
+        handle.batch_update(cassandra_batch=cb)
 
     def _merge_update_pairs(self, pairs):
         m = {}
@@ -144,7 +147,7 @@ class CassandraWrapper(object):
             for key in keys:
                 columns = [StoreColumn(cf='m', name=str(t.m['m']), value=event.value, timestamp=0)]
                 update_pairs.append((t.daystr+':'+self._get_store_pk(event.category, key), columns))
-        self._batch_update_event(update_pairs)
+        self._batch_update_event(self._event_cassandra_api, update_pairs)
 
     def _get_store_pk(self, category, key):
         return category + ':' + key
@@ -184,8 +187,8 @@ class CassandraWrapper(object):
                                     value=alarm.reason,
                                     timestamp=alarm.timestamp)]
             reason_pairs.append((t.daystr+':alarm', columns))
-        self._batch_update_event(update_pairs)
-        self._batch_update_event_properties(reason_pairs)
+        self._batch_update_event(self._alarm_cassandra_api, update_pairs)
+        self._batch_update_event_properties(self._alarm_cassandra_api, reason_pairs)
 
 
 class CollectorConsumer(object):
