@@ -9,7 +9,7 @@ if sys.argv[-1] == 'publish':
 
 setup(
         name="collectd",
-        version="0.12",
+        version="0.13",
         description="python stats service",
         long_description=open("README.md").read(),
         author="yancl",
