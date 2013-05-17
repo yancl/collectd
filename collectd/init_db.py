@@ -3,7 +3,8 @@ from cassandra_client.protocol.genpy.cassandra import Cassandra
 from cassandra_client.protocol.genpy.cassandra.ttypes import *
 from cassandra_client import cassandra_api
 from thrift_client import thrift_client
-import conf
+
+SERVERS = ['127.0.0.1:9160']
 
 def init_timeline_keyspace_and_column_familys(keyspace, cfs, servers):
     print 'initing timeline keyspace&column familys'
@@ -48,10 +49,10 @@ def add_event_keyspace_properties_column_family(keyspace, servers):
 if __name__ == '__main__':
     init_timeline_keyspace_and_column_familys(keyspace='timeline_stats',
                             cfs=['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
-                            servers=conf.SERVERS)
+                            servers=SERVERS)
 
     init_event_keyspace_and_column_familys(keyspace='event_stats',
                             cfs=['Y', 'M', 'D', 'H', 'm'],
-                            servers=conf.SERVERS)
+                            servers=SERVERS)
 
-    add_event_keyspace_properties_column_family(keyspace='event_stats', servers=conf.SERVERS)
+    add_event_keyspace_properties_column_family(keyspace='event_stats', servers=SERVERS)
