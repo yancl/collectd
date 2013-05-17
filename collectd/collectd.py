@@ -1,7 +1,8 @@
 from datetime import datetime
 import time
+from cPickle import dumps
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from Queue import Queue
 from threading import Thread
 
@@ -49,42 +50,32 @@ class CassandraWrapper(object):
                         servers=servers, options=options)
         alarm_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
                         servers=servers, options=options)
+        trace_client = thrift_client.ThriftClient(client_class=Cassandra.Client,
+                        servers=servers, options=options)
         self._timeline_cassandra_api = cassandra_api.CassandraAPI(handle=timeline_client, keyspace=timeline_keyspace)
+        self._trace_cassandra_api = cassandra_api.CassandraAPI(handle=trace_client, keyspace=timeline_keyspace)
         self._event_cassandra_api = cassandra_api.CassandraAPI(handle=event_client, keyspace=event_keyspace)
         self._alarm_cassandra_api = cassandra_api.CassandraAPI(handle=alarm_client, keyspace=event_keyspace)
 
-    def _batch_update_timeline(self, update_pairs):
+    def _batch_update_timeline(self, handle, update_pairs):
         update_pairs = self._merge_update_pairs(update_pairs)
         cb = cassandra_api.CassandraAPI.CassandraBatch()
         for (pk, columns) in update_pairs:
             cbf = cassandra_api.CassandraAPI.CassandraBatchCF()
-            for column in columns:
-                mutations = []
-                mutations.append(Mutation(column_or_supercolumn=
-                    ColumnOrSuperColumn(
-                        column=Column(
-                                name=column.name,
-                                value=column.value,
-                                timestamp=column.timestamp))))
-                cbf.add(cf=column.cf, mutations=mutations)
-
+            m = self._merge_update_cf(columns)
+            for (cf, mutations) in m.iteritems():
+                cbf.add(cf=cf, mutations=mutations)
             cb.add(pk=pk, cassandra_batch_cf=cbf)
-        self._timeline_cassandra_api.batch_update(cassandra_batch=cb)
+        handle.batch_update(cassandra_batch=cb)
 
     def _batch_update_event(self, handle, update_pairs):
         update_pairs = self._merge_update_pairs(update_pairs)
         cb = cassandra_api.CassandraAPI.CassandraBatch()
         for (pk, columns) in update_pairs:
             cbf = cassandra_api.CassandraAPI.CassandraBatchCF()
-            for column in columns:
-                mutations = []
-                mutations.append(Mutation(column_or_supercolumn=
-                    ColumnOrSuperColumn(
-                        counter_column=CounterColumn(
-                                name=column.name,
-                                value=column.value))))
-                cbf.add(cf=column.cf, mutations=mutations)
-
+            m = self._merge_update_counter_cf(columns)
+            for (cf, mutations) in m.iteritems():
+                cbf.add(cf=cf, mutations=mutations)
             cb.add(pk=pk, cassandra_batch_cf=cbf)
         handle.batch_update(cassandra_batch=cb)
 
@@ -93,30 +84,43 @@ class CassandraWrapper(object):
         cb = cassandra_api.CassandraAPI.CassandraBatch()
         for (pk, columns) in update_pairs:
             cbf = cassandra_api.CassandraAPI.CassandraBatchCF()
-            for column in columns:
-                mutations = []
-                mutations.append(Mutation(column_or_supercolumn=
+            m = self._merge_update_cf(columns)
+            for (cf, mutations) in m.iteritems():
+                cbf.add(cf=cf, mutations=mutations)
+            cb.add(pk=pk, cassandra_batch_cf=cbf)
+        handle.batch_update(cassandra_batch=cb)
+
+    def _merge_update_pairs(self, pairs):
+        m = defaultdict(list)
+        for (k, v) in pairs:
+            m[k].extend(v)
+        r = []
+        for (k, v) in m.iteritems():
+            r.append((k, v))
+        return r
+
+    def _merge_update_cf(self, columns):
+        m = defaultdict(list)
+        for column in columns:
+            m[column.cf].append(
+                Mutation(column_or_supercolumn=
                     ColumnOrSuperColumn(
                         column=Column(
                                 name=column.name,
                                 value=column.value,
                                 timestamp=column.timestamp))))
-                cbf.add(cf=column.cf, mutations=mutations)
+        return m
 
-            cb.add(pk=pk, cassandra_batch_cf=cbf)
-        handle.batch_update(cassandra_batch=cb)
-
-    def _merge_update_pairs(self, pairs):
-        m = {}
-        for (k, v) in pairs:
-            try:
-                m[k] += v
-            except KeyError:
-                m[k] = v
-        r = []
-        for (k, v) in m.iteritems():
-            r.append((k, v))
-        return r
+    def _merge_update_counter_cf(self, columns):
+        m = defaultdict(list)
+        for column in columns:
+            m[column.cf].append(
+                Mutation(column_or_supercolumn=
+                    ColumnOrSuperColumn(
+                        counter_column=CounterColumn(
+                                name=column.name,
+                                value=column.value))))
+        return m
 
     def _denormalize_keys(self, key_list):
         r = []
@@ -160,7 +164,7 @@ class CassandraWrapper(object):
                                     value=str(point.v), timestamp=time_slice.timestamp) for point in time_slice.points]
             pk = t.daystr + ':' + self._get_store_pk(time_slice.category, time_slice.key)
             update_pairs.append((pk, columns))
-        self._batch_update_timeline(update_pairs)
+        self._batch_update_timeline(self._timeline_cassandra_api, update_pairs)
 
     def add_alarm(self, alarms):
         update_pairs = []
@@ -191,7 +195,16 @@ class CassandraWrapper(object):
         self._batch_update_event_properties(self._alarm_cassandra_api, reason_pairs)
 
     def add_trace(self, spans):
-        print 'spans:',spans
+        update_pairs = []
+        for span in spans:
+            columns = [StoreColumn(cf='trace', name=str(span.id),
+                            value=dumps(self._trans_span_to_dict(span)), timestamp=span.timestamp)]
+            update_pairs.append((str(span.trace_id), columns))
+        self._batch_update_timeline(self._trace_cassandra_api, update_pairs)
+
+    def _trans_span_to_dict(self, span):
+        return dict(timestamp=span.timestamp, trace_id=span.trace_id, name=span.name, id=span.id,
+                    parent_id=span.parent_id, duration=span.duration, host=span.host)
 
 
 class CollectorConsumer(object):
@@ -214,6 +227,9 @@ class CollectorConsumer(object):
 
     def add_alarm(self, alarms):
         self._aq.put_nowait(alarms)
+
+    def add_trace(self, spans):
+        self._sq.put_nowait(spans)
 
     def _create_worker(self, runner):
         return Thread(target=runner)

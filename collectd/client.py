@@ -24,3 +24,9 @@ class Stats(object):
 
     def add_alarms(self, alarms):
         self._client.add_alarm(alarms)
+
+    def add_trace(self, span):
+        self._client.add_trace([span])
+
+    def add_traces(self, spans):
+        self._client.add_trace(spans)

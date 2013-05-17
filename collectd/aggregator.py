@@ -36,16 +36,16 @@ class Aggregator(object):
         self._hostname = self._get_host_name()
         self._q = Queue(maxsize=100000)
 
-    def add_trace(self, trace_id, span_name, timestamp, duration):
+    def add_trace(self, trace_id, span_id, span_name, timestamp, duration):
         span = Span(timestamp=timestamp, trace_id=trace_id,
-                    name=span_name, id=timestamp, parent_id=0,
+                    name=span_name, id=span_id, parent_id=0,
                     duration=duration, host=self._hostname)
         self._trace[trace_id].append(span)
 
     def commit_trace(self, trace_id):
         trace = self._trace.pop(trace_id, None)
         if trace:
-            self._commit_trace.append(trace)
+            self._commit_trace[trace_id] = trace
 
     def abort_trace(self, trace_id):
         self._trace.pop(trace_id, None)
@@ -125,8 +125,12 @@ class Aggregator(object):
             self._reporter.add_alarms(alarms)
 
     def _report_trace(self, traces):
-        if traces:
-            self._reporter.add_traces(traces)
+        spans = []
+        for (k, v) in traces.iteritems():
+            spans.extend(v)
+
+        if spans:
+            self._reporter.add_traces(spans)
 
     def _get_host_name(self):
         return socket.gethostname()
