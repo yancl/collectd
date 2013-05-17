@@ -40,7 +40,7 @@ class Aggregator(object):
         span = Span(timestamp=timestamp, trace_id=trace_id,
                     name=span_name, id=timestamp, parent_id=0,
                     duration=duration, host=self._hostname)
-        self._trace.append(span)
+        self._trace[trace_id].append(span)
 
     def commit_trace(self, trace_id):
         trace = self._trace.pop(trace_id, None)
