@@ -446,3 +446,135 @@ class Alarm:
 
   def __ne__(self, other):
     return not (self == other)
+
+class Span:
+  """
+  Attributes:
+   - timestamp
+   - trace_id
+   - name
+   - id
+   - parent_id
+   - duration
+   - host
+  """
+
+  thrift_spec = (
+    None, # 0
+    (1, TType.I64, 'timestamp', None, None, ), # 1
+    (2, TType.I64, 'trace_id', None, None, ), # 2
+    (3, TType.STRING, 'name', None, None, ), # 3
+    (4, TType.I64, 'id', None, None, ), # 4
+    (5, TType.I64, 'parent_id', None, None, ), # 5
+    (6, TType.I32, 'duration', None, None, ), # 6
+    (7, TType.STRING, 'host', None, None, ), # 7
+  )
+
+  def __init__(self, timestamp=None, trace_id=None, name=None, id=None, parent_id=None, duration=None, host=None,):
+    self.timestamp = timestamp
+    self.trace_id = trace_id
+    self.name = name
+    self.id = id
+    self.parent_id = parent_id
+    self.duration = duration
+    self.host = host
+
+  def read(self, iprot):
+    if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
+      fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))
+      return
+    iprot.readStructBegin()
+    while True:
+      (fname, ftype, fid) = iprot.readFieldBegin()
+      if ftype == TType.STOP:
+        break
+      if fid == 1:
+        if ftype == TType.I64:
+          self.timestamp = iprot.readI64();
+        else:
+          iprot.skip(ftype)
+      elif fid == 2:
+        if ftype == TType.I64:
+          self.trace_id = iprot.readI64();
+        else:
+          iprot.skip(ftype)
+      elif fid == 3:
+        if ftype == TType.STRING:
+          self.name = iprot.readString();
+        else:
+          iprot.skip(ftype)
+      elif fid == 4:
+        if ftype == TType.I64:
+          self.id = iprot.readI64();
+        else:
+          iprot.skip(ftype)
+      elif fid == 5:
+        if ftype == TType.I64:
+          self.parent_id = iprot.readI64();
+        else:
+          iprot.skip(ftype)
+      elif fid == 6:
+        if ftype == TType.I32:
+          self.duration = iprot.readI32();
+        else:
+          iprot.skip(ftype)
+      elif fid == 7:
+        if ftype == TType.STRING:
+          self.host = iprot.readString();
+        else:
+          iprot.skip(ftype)
+      else:
+        iprot.skip(ftype)
+      iprot.readFieldEnd()
+    iprot.readStructEnd()
+
+  def write(self, oprot):
+    if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
+      oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
+      return
+    oprot.writeStructBegin('Span')
+    if self.timestamp is not None:
+      oprot.writeFieldBegin('timestamp', TType.I64, 1)
+      oprot.writeI64(self.timestamp)
+      oprot.writeFieldEnd()
+    if self.trace_id is not None:
+      oprot.writeFieldBegin('trace_id', TType.I64, 2)
+      oprot.writeI64(self.trace_id)
+      oprot.writeFieldEnd()
+    if self.name is not None:
+      oprot.writeFieldBegin('name', TType.STRING, 3)
+      oprot.writeString(self.name)
+      oprot.writeFieldEnd()
+    if self.id is not None:
+      oprot.writeFieldBegin('id', TType.I64, 4)
+      oprot.writeI64(self.id)
+      oprot.writeFieldEnd()
+    if self.parent_id is not None:
+      oprot.writeFieldBegin('parent_id', TType.I64, 5)
+      oprot.writeI64(self.parent_id)
+      oprot.writeFieldEnd()
+    if self.duration is not None:
+      oprot.writeFieldBegin('duration', TType.I32, 6)
+      oprot.writeI32(self.duration)
+      oprot.writeFieldEnd()
+    if self.host is not None:
+      oprot.writeFieldBegin('host', TType.STRING, 7)
+      oprot.writeString(self.host)
+      oprot.writeFieldEnd()
+    oprot.writeFieldStop()
+    oprot.writeStructEnd()
+
+  def validate(self):
+    return
+
+
+  def __repr__(self):
+    L = ['%s=%r' % (key, value)
+      for key, value in self.__dict__.iteritems()]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return not (self == other)

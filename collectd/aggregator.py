@@ -3,10 +3,11 @@ import socket
 from collections import defaultdict
 from threading import Thread
 from client import Stats
-from protocol.genpy.collectd.ttypes import Point, Event, Alarm, TimeSlice, ETimeSlicePointType
+from protocol.genpy.collectd.ttypes import Point, Event, Alarm, TimeSlice, ETimeSlicePointType, Span
 from utils import now
 from collections import namedtuple
 from Queue import Queue
+import cPickle
 
 ConsumeItem = namedtuple('ConsumeItem', 'content, ctype')
 
@@ -26,13 +27,30 @@ class Aggregator(object):
         self._aggregator_time = aggregator_time
         self._event = defaultdict(int)
         self._timeline = defaultdict(list)
+        self._trace = defaultdict(list)
+        self._commit_trace = defaultdict(list)
         self._alarm = []
         self._rotate_thread = Thread(target=self._rotate_worker)
         self._report_thread = Thread(target=self._report_worker)
         self._hostname = self._get_host_name()
         self._q = Queue(maxsize=100000)
 
-    def add_alarm(self, level, category, key, reason):
+    def add_trace(self, trace_id, span_name, timestamp, duration):
+        span = Span(timestamp=timestamp, trace_id=trace_id,
+                    name=span_name, id=timestamp, parent_id=0,
+                    duration=duration, host=self._hostname)
+        self._trace.append(span)
+
+    def commit_trace(self, trace_id):
+        trace = self._trace.pop(trace_id, None)
+        if trace:
+            self._commit_trace.append(trace)
+
+    def abort_trace(self, trace_id):
+        self._trace.pop(trace_id, None)
+
+    def add_alarm(self, level, category, key, reason, trace_id=0):
+        reason = cPickle.dumps(dict(reason=reason, trace_id=trace_id))
         self._alarm.append((level, category, key, reason))
 
     def incr_event_counter(self, key, val=1):
@@ -45,15 +63,22 @@ class Aggregator(object):
         while True:
             try:
                 time.sleep(self._aggregator_time)
+                #sweep data
                 event = self._event
                 timeline = self._timeline
+                commit_trace = self._commit_trace
                 alarm = self._alarm
+
                 self._event = defaultdict(int)
                 self._timeline = defaultdict(list)
+                self._commit_trace = defaultdict(list)
                 self._alarm = [] 
+
+                #async consumer
                 self._q.put_nowait(ConsumeItem(content=event, ctype=0))
                 self._q.put_nowait(ConsumeItem(content=timeline, ctype=1))
                 self._q.put_nowait(ConsumeItem(content=alarm, ctype=2))
+                self._q.put_nowait(ConsumeItem(content=commit_trace, ctype=3))
             except Exception,e:
                 print 'rotate ex:',e
 
@@ -67,6 +92,8 @@ class Aggregator(object):
                     self._report_timeline(item.content)
                 elif item.ctype == 2:
                     self._report_alarm(item.content)
+                elif item.ctype == 3:
+                    self._report_trace(item.content)
             except Exception, e:
                 print 'report ex:',e
 
@@ -95,6 +122,10 @@ class Aggregator(object):
                     reason=reason, level=level, host=self._hostname))
         if alarms:
             self._reporter.add_alarms(alarms)
+
+    def _report_trace(self, traces):
+        if traces:
+            self._reporter.add_traces(traces)
 
     def _get_host_name(self):
         return socket.gethostname()

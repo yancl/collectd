@@ -190,6 +190,9 @@ class CassandraWrapper(object):
         self._batch_update_event(self._alarm_cassandra_api, update_pairs)
         self._batch_update_event_properties(self._alarm_cassandra_api, reason_pairs)
 
+    def add_trace(self, spans):
+        print 'spans:',spans
+
 
 class CollectorConsumer(object):
     def __init__(self, q_max_size, store):
@@ -197,9 +200,11 @@ class CollectorConsumer(object):
         self._eq = Queue(maxsize=q_max_size)
         self._tq = Queue(maxsize=q_max_size)
         self._aq = Queue(maxsize=q_max_size)
+        self._sq = Queue(maxsize=q_max_size)
         self._event_thread = self._create_worker(self._event_worker)
         self._time_thread = self._create_worker(self._time_slice_worker)
         self._alarm_thread = self._create_worker(self._alarm_worker)
+        self._trace_thread = self._create_worker(self._trace_worker)
 
     def add_event(self, events):
         self._eq.put_nowait(events)
@@ -237,14 +242,24 @@ class CollectorConsumer(object):
             except Exception,e:
                 print e
 
+    def _trace_worker(self):
+        while True:
+            try:
+                spans = self._sq.get(block=True)
+                self._store.add_trace(spans)
+            except Exception,e:
+                print e
+
 
     def run(self):
         self._event_thread.setDaemon(True)
         self._time_thread.setDaemon(True)
         self._alarm_thread.setDaemon(True)
+        self._trace_thread.setDaemon(True)
         self._event_thread.start()
         self._time_thread.start()
         self._alarm_thread.start()
+        self._trace_thread.start()
 
 class CollectorHandler(object):
     def __init__(self, collector):
@@ -258,6 +273,9 @@ class CollectorHandler(object):
 
     def add_alarm(self, alarms):
         self._collector.add_alarm(alarms)
+
+    def add_trace(self, spans):
+        self._collector.add_trace(spans)
 
 
 
