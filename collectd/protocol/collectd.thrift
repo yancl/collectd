@@ -1,6 +1,6 @@
 #used for counter
 struct Event {
-    1: i64 timestamp,           // microseconds from epoch
+    1: i32 timestamp,
     2: string category,
     3: list<string> key,
     4: i64 value,
@@ -26,14 +26,14 @@ struct Point
 
 #used for timeline
 struct TimeSlice {
-    1: i64 timestamp,           // microseconds from epoch
+    1: i32 timestamp,
     2: string category,
     3: string key,
     4: list<Point> points,
 }
 
 struct Alarm {
-    1: i64 timestamp,           // microseconds from epoch
+    1: i32 timestamp,
     2: string category,
     3: string key,
     4: string reason,
