@@ -1,6 +1,7 @@
 from datetime import datetime
 import time
 from cPickle import dumps
+from utils import now_microseconds
 
 from collections import namedtuple, defaultdict
 from Queue import Queue
@@ -157,16 +158,18 @@ class CassandraWrapper(object):
         return category + ':' + key
 
     def add_time_slice(self, slices):
+        timestamp = now_microseconds()
         update_pairs = []
         for time_slice in slices:
             t = TimeLineDateWrapper(time_slice.timestamp)
             columns = [StoreColumn(cf=str(point.k), name=str(t.s),
-                                    value=str(point.v), timestamp=time_slice.timestamp) for point in time_slice.points]
+                                    value=str(point.v), timestamp=timestamp) for point in time_slice.points]
             pk = t.daystr + ':' + self._get_store_pk(time_slice.category, time_slice.key)
             update_pairs.append((pk, columns))
         self._batch_update_timeline(self._timeline_cassandra_api, update_pairs)
 
     def add_alarm(self, alarms):
+        timestamp = now_microseconds()
         update_pairs = []
         reason_pairs = []
         for alarm in alarms:
@@ -189,16 +192,17 @@ class CassandraWrapper(object):
             columns = [StoreColumn(cf='properties', name=str(alarm.timestamp)+':'+ 
                                     self._compose_longest_key(alarm_key),
                                     value=alarm.reason,
-                                    timestamp=alarm.timestamp)]
+                                    timestamp=timestamp)]
             reason_pairs.append((t.daystr+':alarm', columns))
         self._batch_update_event(self._alarm_cassandra_api, update_pairs)
         self._batch_update_event_properties(self._alarm_cassandra_api, reason_pairs)
 
     def add_trace(self, spans):
+        timestamp = now_microseconds()
         update_pairs = []
         for span in spans:
             columns = [StoreColumn(cf='trace', name=str(span.id),
-                            value=dumps(self._trans_span_to_dict(span)), timestamp=span.timestamp)]
+                            value=dumps(self._trans_span_to_dict(span)), timestamp=timestamp)]
             update_pairs.append((str(span.trace_id), columns))
         self._batch_update_timeline(self._trace_cassandra_api, update_pairs)
 
