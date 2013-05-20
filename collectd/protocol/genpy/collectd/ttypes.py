@@ -57,7 +57,7 @@ class Event:
 
   thrift_spec = (
     None, # 0
-    (1, TType.I32, 'timestamp', None, None, ), # 1
+    (1, TType.I64, 'timestamp', None, None, ), # 1
     (2, TType.STRING, 'category', None, None, ), # 2
     (3, TType.LIST, 'key', (TType.STRING,None), None, ), # 3
     (4, TType.I64, 'value', None, None, ), # 4
@@ -79,8 +79,8 @@ class Event:
       if ftype == TType.STOP:
         break
       if fid == 1:
-        if ftype == TType.I32:
-          self.timestamp = iprot.readI32();
+        if ftype == TType.I64:
+          self.timestamp = iprot.readI64();
         else:
           iprot.skip(ftype)
       elif fid == 2:
@@ -114,8 +114,8 @@ class Event:
       return
     oprot.writeStructBegin('Event')
     if self.timestamp is not None:
-      oprot.writeFieldBegin('timestamp', TType.I32, 1)
-      oprot.writeI32(self.timestamp)
+      oprot.writeFieldBegin('timestamp', TType.I64, 1)
+      oprot.writeI64(self.timestamp)
       oprot.writeFieldEnd()
     if self.category is not None:
       oprot.writeFieldBegin('category', TType.STRING, 2)
@@ -233,7 +233,7 @@ class TimeSlice:
 
   thrift_spec = (
     None, # 0
-    (1, TType.I32, 'timestamp', None, None, ), # 1
+    (1, TType.I64, 'timestamp', None, None, ), # 1
     (2, TType.STRING, 'category', None, None, ), # 2
     (3, TType.STRING, 'key', None, None, ), # 3
     (4, TType.LIST, 'points', (TType.STRUCT,(Point, Point.thrift_spec)), None, ), # 4
@@ -255,8 +255,8 @@ class TimeSlice:
       if ftype == TType.STOP:
         break
       if fid == 1:
-        if ftype == TType.I32:
-          self.timestamp = iprot.readI32();
+        if ftype == TType.I64:
+          self.timestamp = iprot.readI64();
         else:
           iprot.skip(ftype)
       elif fid == 2:
@@ -291,8 +291,8 @@ class TimeSlice:
       return
     oprot.writeStructBegin('TimeSlice')
     if self.timestamp is not None:
-      oprot.writeFieldBegin('timestamp', TType.I32, 1)
-      oprot.writeI32(self.timestamp)
+      oprot.writeFieldBegin('timestamp', TType.I64, 1)
+      oprot.writeI64(self.timestamp)
       oprot.writeFieldEnd()
     if self.category is not None:
       oprot.writeFieldBegin('category', TType.STRING, 2)
@@ -340,7 +340,7 @@ class Alarm:
 
   thrift_spec = (
     None, # 0
-    (1, TType.I32, 'timestamp', None, None, ), # 1
+    (1, TType.I64, 'timestamp', None, None, ), # 1
     (2, TType.STRING, 'category', None, None, ), # 2
     (3, TType.STRING, 'key', None, None, ), # 3
     (4, TType.STRING, 'reason', None, None, ), # 4
@@ -366,8 +366,8 @@ class Alarm:
       if ftype == TType.STOP:
         break
       if fid == 1:
-        if ftype == TType.I32:
-          self.timestamp = iprot.readI32();
+        if ftype == TType.I64:
+          self.timestamp = iprot.readI64();
         else:
           iprot.skip(ftype)
       elif fid == 2:
@@ -406,8 +406,8 @@ class Alarm:
       return
     oprot.writeStructBegin('Alarm')
     if self.timestamp is not None:
-      oprot.writeFieldBegin('timestamp', TType.I32, 1)
-      oprot.writeI32(self.timestamp)
+      oprot.writeFieldBegin('timestamp', TType.I64, 1)
+      oprot.writeI64(self.timestamp)
       oprot.writeFieldEnd()
     if self.category is not None:
       oprot.writeFieldBegin('category', TType.STRING, 2)
